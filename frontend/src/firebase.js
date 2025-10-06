@@ -31,9 +31,10 @@ googleProvider.addScope('https://www.googleapis.com/auth/calendar.events');
 googleProvider.addScope('https://www.googleapis.com/auth/drive');
 googleProvider.addScope('https://www.googleapis.com/auth/drive.file');
 
-// Force account selection
+// Force account selection and request offline access for refresh token
 googleProvider.setCustomParameters({
-  prompt: 'select_account'
+  prompt: 'consent',
+  access_type: 'offline',
 });
 
 // Initialize Analytics (optional)

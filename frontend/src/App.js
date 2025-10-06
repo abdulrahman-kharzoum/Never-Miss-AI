@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from 'firebase/auth';
 import { auth, googleProvider } from './firebase';
 import axios from 'axios';
 import './App.css';
@@ -10,6 +10,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [accessToken, setAccessToken] = useState(null);
+  const [expiresAt, setExpiresAt] = useState(null); // New state for token expiration
   const [showToken, setShowToken] = useState(false);
   const [tokenStored, setTokenStored] = useState(false);
   const [error, setError] = useState(null);
@@ -34,16 +35,20 @@ function App() {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       
-      // Get the access token
-      const credential = await user.getIdTokenResult();
-      const token = credential.token;
-      
+      // Get Google-specific access and refresh tokens
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const googleAccessToken = credential.accessToken;
+      const googleRefreshToken = credential.refreshToken; // This will be available if access_type: 'offline' is set
+      const expiresIn = credential.expiresIn; // Get expires_in from credential
+      const expiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000).toISOString() : null; // Calculate expiresAt
+
       // Store token in state
-      setAccessToken(token);
+      setAccessToken(googleAccessToken);
+      setExpiresAt(expiresAt); // Store expiresAt in state
       setUser(user);
 
-      // Send token to backend API
-      await storeTokenInBackend(user, token);
+      // Send tokens to backend API
+      await storeTokenInBackend(user, googleAccessToken, googleRefreshToken, expiresAt);
       
       console.log('✅ User signed in successfully');
       console.log('User ID:', user.uid);
@@ -57,10 +62,42 @@ function App() {
     }
   };
 
-  // Function to store token in backend
-  const storeTokenInBackend = async (user, token) => {
+  // Function to check token validity and refresh if needed
+  const checkAndRefreshToken = async () => {
+    if (!user || !expiresAt) return true; // No user or no expiration, assume valid
+
+    const currentTime = new Date().getTime();
+    const expirationTime = new Date(expiresAt).getTime();
+
+    // Refresh token if it expires within the next 5 minutes (300,000 ms)
+    if (expirationTime - currentTime < 300000) {
+      console.log('⏳ Access token expiring soon, attempting to refresh...');
+      try {
+        const backendUrl = BACKEND_URL || '';
+        const response = await axios.post(`${backendUrl}/api/auth/refresh-token`, {
+          userId: user.uid,
+        });
+
+        if (response.data.accessToken) {
+          setAccessToken(response.data.accessToken);
+          setExpiresAt(response.data.expiresAt); // Update with new expiration
+          console.log('✅ Access token refreshed successfully');
+          return true;
+        }
+      } catch (refreshError) {
+        console.error('❌ Error refreshing token:', refreshError.response?.data || refreshError.message);
+        setError('Session expired. Please sign in again.');
+        handleSignOut(); // Force re-login if refresh fails
+        return false;
+      }
+    }
+    return true; // Token is still valid or successfully refreshed
+  };
+
+  // Function to store tokens in backend
+  const storeTokenInBackend = async (user, accessToken, refreshToken, expiresAt) => {
     try {
-      console.log('📤 Attempting to store token in backend...');
+      console.log('📤 Attempting to store tokens in backend...');
       console.log('Backend URL:', BACKEND_URL || '(same origin)');
       
       const backendUrl = BACKEND_URL || '';
@@ -69,30 +106,30 @@ function App() {
         email: user.email,
         displayName: user.displayName,
         photoURL: user.photoURL,
-        accessToken: token,
-        refreshToken: user.refreshToken || null,
-        expiresAt: new Date(Date.now() + 3600000).toISOString(), // 1 hour
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        expiresAt: expiresAt, // Sending expiresAt to backend
         scopes: [
-          'userinfo.profile',
-          'userinfo.email',
-          'gmail.readonly',
-          'gmail.modify',
-          'calendar',
-          'calendar.events',
-          'drive',
-          'drive.file'
+          'https://www.googleapis.com/auth/userinfo.profile',
+          'https://www.googleapis.com/auth/userinfo.email',
+          'https://www.googleapis.com/auth/gmail.readonly',
+          'https://www.googleapis.com/auth/gmail.modify',
+          'https://www.googleapis.com/auth/calendar',
+          'https://www.googleapis.com/auth/calendar.events',
+          'https://www.googleapis.com/auth/drive',
+          'https://www.googleapis.com/auth/drive.file'
         ]
       });
 
       if (response.data.success) {
         setTokenStored(true);
-        console.log('✅ Token stored in backend successfully');
+        console.log('✅ Tokens stored in backend successfully');
       }
     } catch (error) {
-      console.error('❌ Error storing token in backend:', error);
+      console.error('❌ Error storing tokens in backend:', error);
       console.error('Error details:', error.response?.data || error.message);
       
-      let errorMessage = 'Token stored locally but failed to save to backend';
+      let errorMessage = 'Tokens stored locally but failed to save to backend';
       if (error.response) {
         errorMessage += `: ${error.response.status} - ${error.response.data?.detail || error.response.statusText}`;
       } else if (error.request) {
