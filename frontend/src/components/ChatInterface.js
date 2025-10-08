@@ -133,6 +133,11 @@ const ChatInterface = ({ user, onSignOut }) => {
       const accessToken = tokenManager.getAccessToken();
       const refreshToken = localStorage.getItem('refreshToken');
       
+      // Debug: Log tokens being sent
+      console.log('🔍 Sending to N8N:');
+      console.log('  Access Token:', accessToken ? accessToken.substring(0, 20) + '...' : 'EMPTY');
+      console.log('  Refresh Token:', refreshToken ? refreshToken.substring(0, 20) + '...' : 'EMPTY');
+      
       // Send to N8N with tokens
       const n8nResponse = await sendMessageToN8N(
         currentSession.session_id, 
