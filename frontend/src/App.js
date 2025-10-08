@@ -120,7 +120,18 @@ function App() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 animate-gradient">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-white mb-4"></div>
-          <div className="text-white text-xl font-semibold">Loading NeverMiss...</div>
+          <div className="text-white text-xl font-semibold mb-4">Loading NeverMiss...</div>
+          <p className="text-white/70 text-sm mb-6">This is taking longer than usual...</p>
+          <button
+            onClick={() => {
+              setLoading(false);
+              setUser(null);
+              tokenManager.clearTokens();
+            }}
+            className="px-6 py-3 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-all duration-300 backdrop-blur-sm"
+          >
+            Return to Login
+          </button>
         </div>
       </div>
     );
