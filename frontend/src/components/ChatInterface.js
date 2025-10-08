@@ -376,7 +376,8 @@ const ChatInterface = ({ user, onSignOut }) => {
           <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 shadow-lg">
             <div className="max-w-4xl mx-auto">
               <div className="flex items-end space-x-3">
-                <div className="flex-1">
+                <div className="flex-1 relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 rounded-2xl opacity-20 blur-lg animate-pulse"></div>
                   <textarea
                     ref={textareaRef}
                     value={inputMessage}
@@ -384,7 +385,7 @@ const ChatInterface = ({ user, onSignOut }) => {
                     onKeyDown={handleKeyDown}
                     placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
                     disabled={sending}
-                    className="w-full px-5 py-4 rounded-2xl border-2 border-blue-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-500 focus:outline-none resize-none transition-all duration-300 disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-500"
+                    className="relative w-full px-5 py-4 rounded-2xl border-2 border-blue-300 dark:border-blue-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 resize-none transition-all duration-300 disabled:bg-gray-50 dark:disabled:bg-gray-800 disabled:text-gray-500 shadow-lg"
                     rows="1"
                     style={{ maxHeight: '120px' }}
                   />
