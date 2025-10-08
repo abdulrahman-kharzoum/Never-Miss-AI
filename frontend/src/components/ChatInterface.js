@@ -203,7 +203,7 @@ const ChatInterface = ({ user, onSignOut }) => {
               onClick={() => setCurrentSession(session)}
               className={`w-full text-left p-4 rounded-xl transition-all duration-300 ${
                 currentSession?.id === session.id
-                  ? 'bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 text-white shadow-lg scale-105'
+                  ? 'bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 text-white shadow-lg scale-105'
                   : 'bg-blue-50 text-gray-700 hover:bg-blue-100 hover:scale-102'
               }`}
             >
