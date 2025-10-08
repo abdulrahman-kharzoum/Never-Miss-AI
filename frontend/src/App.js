@@ -27,6 +27,10 @@ function App() {
       if (currentUser) {
         setUser(currentUser);
         
+        // Check if this is a new login or just a page refresh
+        const existingUserId = localStorage.getItem('userId');
+        const isNewLogin = !existingUserId || existingUserId !== currentUser.uid;
+        
         // Get tokens from Firebase
         try {
           const token = await currentUser.getIdToken();
@@ -34,34 +38,38 @@ function App() {
           // Calculate expiry time (1 hour from now)
           const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString();
           
-          // Store tokens in backend
-          const tokenData = {
-            userId: currentUser.uid,
-            email: currentUser.email,
-            displayName: currentUser.displayName || 'User',
-            photoURL: currentUser.photoURL,
-            accessToken: token,
-            refreshToken: currentUser.refreshToken || null,
-            expiresAt: expiresAt,
-            scopes: [
-              'gmail.readonly',
-              'gmail.modify',
-              'calendar',
-              'calendar.events',
-              'drive',
-              'drive.file'
-            ]
-          };
-          
-          // Try to store token, but don't fail if backend is down
-          try {
-            await storeUserToken(tokenData);
-            console.log('✅ Tokens stored successfully in backend');
-          } catch (backendError) {
-            console.warn('⚠️ Backend storage failed, continuing anyway:', backendError.message);
+          // Only store tokens in backend if this is a NEW login (not a page refresh)
+          if (isNewLogin) {
+            console.log('🆕 New login detected - storing tokens in backend');
+            const tokenData = {
+              userId: currentUser.uid,
+              email: currentUser.email,
+              displayName: currentUser.displayName || 'User',
+              photoURL: currentUser.photoURL,
+              accessToken: token,
+              refreshToken: currentUser.refreshToken || null,
+              expiresAt: expiresAt,
+              scopes: [
+                'gmail.readonly',
+                'gmail.modify',
+                'calendar',
+                'calendar.events',
+                'drive',
+                'drive.file'
+              ]
+            };
+            
+            try {
+              await storeUserToken(tokenData);
+              console.log('✅ Tokens stored successfully in backend');
+            } catch (backendError) {
+              console.warn('⚠️ Backend storage failed, continuing anyway:', backendError.message);
+            }
+          } else {
+            console.log('🔄 Page refresh detected - using existing tokens');
           }
           
-          // Store in token manager (localStorage)
+          // Always update token manager (localStorage) with fresh token
           tokenManager.setTokens(
             token,
             currentUser.refreshToken,
@@ -69,7 +77,7 @@ function App() {
             expiresAt
           );
           
-          console.log('✅ Tokens stored in localStorage');
+          console.log('✅ Tokens updated in localStorage');
         } catch (error) {
           console.error('❌ Error processing tokens:', error);
           setError('Failed to process authentication tokens');
