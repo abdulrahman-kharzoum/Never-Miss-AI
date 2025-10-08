@@ -4,6 +4,7 @@ import { auth, googleProvider } from './firebase';
 import ChatInterface from './components/ChatInterface';
 import { tokenManager } from './utils/tokenManager';
 import { storeUserToken } from './utils/api';
+import { ThemeProvider } from './context/ThemeContext';
 import './App.css';
 
 function App() {
