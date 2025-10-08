@@ -113,12 +113,15 @@ function App() {
       // Store in token manager
       tokenManager.setTokens(
         googleAccessToken,
-        user.refreshToken,
+        googleRefreshToken || user.refreshToken || '',
         user.uid,
         expiresAt
       );
       
+      // Debug: Verify what was stored
       console.log('✅ Tokens stored in localStorage');
+      console.log('🔍 Stored Access Token:', localStorage.getItem('accessToken'));
+      console.log('🔍 Stored Refresh Token:', localStorage.getItem('refreshToken'));
     } catch (error) {
       console.error('❌ Error signing in:', error);
       setError('Failed to sign in. Please try again.');
