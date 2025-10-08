@@ -140,9 +140,14 @@ const ChatInterface = ({ user, onSignOut }) => {
         refreshToken
       );
       
+      // Parse N8N response - it returns an array with output field
       let aiResponse = 'I received your message!';
-      if (n8nResponse && n8nResponse.output) {
-        aiResponse = n8nResponse.output;
+      if (n8nResponse) {
+        if (Array.isArray(n8nResponse) && n8nResponse.length > 0 && n8nResponse[0].output) {
+          aiResponse = n8nResponse[0].output;
+        } else if (n8nResponse.output) {
+          aiResponse = n8nResponse.output;
+        }
       }
 
       // Save AI response
@@ -160,14 +165,33 @@ const ChatInterface = ({ user, onSignOut }) => {
       if (aiMsgError) throw aiMsgError;
       await loadMessages(currentSession.session_id);
 
-      // Update session
-      await supabase
-        .from('chat_sessions')
-        .update({
-          updated_at: new Date().toISOString(),
-          message_count: messages.length + 2
-        })
-        .eq('session_id', currentSession.session_id);
+      // Auto-name conversation from first message (if still "New Conversation")
+      if (currentSession.title === 'New Conversation' && messages.length === 0) {
+        const conversationTitle = userMessage.length > 50 
+          ? userMessage.substring(0, 50) + '...' 
+          : userMessage;
+        
+        await supabase
+          .from('chat_sessions')
+          .update({ 
+            title: conversationTitle,
+            updated_at: new Date().toISOString(),
+            message_count: 2
+          })
+          .eq('session_id', currentSession.session_id);
+        
+        // Reload sessions to show new title
+        await loadSessions();
+      } else {
+        // Just update message count and timestamp
+        await supabase
+          .from('chat_sessions')
+          .update({
+            updated_at: new Date().toISOString(),
+            message_count: messages.length + 2
+          })
+          .eq('session_id', currentSession.session_id);
+      }
 
     } catch (error) {
       console.error('Error sending message:', error);
