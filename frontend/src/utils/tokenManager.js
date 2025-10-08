@@ -17,10 +17,10 @@ class TokenManager {
     this.expiresAt = expiresAt;
     
     // Store in localStorage for persistence
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-    localStorage.setItem('userId', userId);
-    localStorage.setItem('expiresAt', expiresAt);
+    if (accessToken) localStorage.setItem('accessToken', accessToken);
+    if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
+    if (userId) localStorage.setItem('userId', userId);
+    if (expiresAt) localStorage.setItem('expiresAt', expiresAt);
   }
 
   loadTokens() {
@@ -62,7 +62,8 @@ class TokenManager {
 
   async refreshAccessToken() {
     if (!this.refreshToken || !this.userId) {
-      throw new Error('No refresh token available');
+      console.warn('⚠️ No refresh token available');
+      return null;
     }
 
     try {
@@ -83,57 +84,33 @@ class TokenManager {
       console.log('✅ Token refreshed successfully');
       return accessToken;
     } catch (error) {
-      console.error('❌ Token refresh failed:', error);
-      this.clearTokens();
-      throw error;
+      console.warn('⚠️ Token refresh failed, will use existing token:', error.message);
+      // Don't clear tokens or redirect, just continue with existing token
+      return this.accessToken;
     }
   }
 }
 
 export const tokenManager = new TokenManager();
 
-// Axios interceptor for automatic token refresh
+// Axios interceptor for automatic token refresh (DISABLED to prevent loops)
+// We'll manually handle token refresh when needed
 axios.interceptors.request.use(
   async (config) => {
+    // Don't interfere with auth endpoints
+    if (config.url?.includes('/api/auth')) {
+      return config;
+    }
+    
     // Check if token is expired before making request
     if (tokenManager.isTokenExpired()) {
-      try {
-        await tokenManager.refreshAccessToken();
-      } catch (error) {
-        console.error('Failed to refresh token, redirecting to login');
-        window.location.href = '/';
-        return Promise.reject(error);
-      }
+      console.log('🔄 Token expiring soon, refreshing...');
+      await tokenManager.refreshAccessToken();
     }
     
     return config;
   },
   (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Axios response interceptor for 401 errors
-axios.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    
-    // If 401 error and not already retrying
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      
-      try {
-        await tokenManager.refreshAccessToken();
-        return axios(originalRequest);
-      } catch (refreshError) {
-        console.error('Token refresh failed, logging out');
-        tokenManager.clearTokens();
-        window.location.href = '/';
-        return Promise.reject(refreshError);
-      }
-    }
-    
     return Promise.reject(error);
   }
 );

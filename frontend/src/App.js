@@ -9,6 +9,7 @@ import './App.css';
 function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     // Load tokens from localStorage
@@ -21,7 +22,6 @@ function App() {
         // Get tokens from Firebase
         try {
           const token = await currentUser.getIdToken();
-          const tokenResult = await currentUser.getIdTokenResult();
           
           // Calculate expiry time (1 hour from now)
           const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString();
@@ -45,9 +45,15 @@ function App() {
             ]
           };
           
-          await storeUserToken(tokenData);
+          // Try to store token, but don't fail if backend is down
+          try {
+            await storeUserToken(tokenData);
+            console.log('✅ Tokens stored successfully in backend');
+          } catch (backendError) {
+            console.warn('⚠️ Backend storage failed, continuing anyway:', backendError.message);
+          }
           
-          // Store in token manager
+          // Store in token manager (localStorage)
           tokenManager.setTokens(
             token,
             currentUser.refreshToken,
@@ -55,9 +61,10 @@ function App() {
             expiresAt
           );
           
-          console.log('✅ Tokens stored successfully');
+          console.log('✅ Tokens stored in localStorage');
         } catch (error) {
-          console.error('❌ Error storing tokens:', error);
+          console.error('❌ Error processing tokens:', error);
+          setError('Failed to process authentication tokens');
         }
       } else {
         setUser(null);
@@ -72,13 +79,14 @@ function App() {
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
+    setError(null);
     try {
       const result = await signInWithPopup(auth, googleProvider);
       setUser(result.user);
       console.log('✅ User signed in:', result.user.email);
     } catch (error) {
       console.error('❌ Error signing in:', error);
-      alert('Failed to sign in. Please try again.');
+      setError('Failed to sign in. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -97,7 +105,7 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 animate-gradient">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-500 animate-gradient">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-white mb-4"></div>
           <div className="text-white text-xl font-semibold">Loading NeverMiss...</div>
@@ -108,7 +116,7 @@ function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 animate-gradient p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-500 animate-gradient p-4">
         <div className="max-w-md w-full">
           <div className="text-center mb-8 animate-fade-in">
             <div className="inline-block p-4 bg-white/20 backdrop-blur-lg rounded-full mb-4 animate-bounce-slow">
@@ -122,11 +130,17 @@ function App() {
           </div>
 
           <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 animate-slide-up">
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+            
             <div className="text-center mb-6">
               <div className="inline-flex items-center justify-center space-x-2 mb-4">
-                <div className="w-2 h-2 bg-gradient-to-r from-green-400 to-blue-500 rounded-full animate-pulse"></div>
-                <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full animate-pulse delay-100"></div>
-                <div className="w-2 h-2 bg-gradient-to-r from-yellow-400 to-red-500 rounded-full animate-pulse delay-200"></div>
+                <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-gradient-to-r from-cyan-400 to-teal-500 rounded-full animate-pulse delay-100"></div>
+                <div className="w-2 h-2 bg-gradient-to-r from-teal-400 to-blue-500 rounded-full animate-pulse delay-200"></div>
               </div>
               <p className="text-gray-700 font-medium">Welcome! Sign in to get started</p>
             </div>
