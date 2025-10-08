@@ -269,7 +269,7 @@ const ChatInterface = ({ user, onSignOut }) => {
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-indigo-500 mb-4"></div>
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-blue-500 mb-4"></div>
                 <div className="text-gray-600">Loading messages...</div>
               </div>
             </div>
