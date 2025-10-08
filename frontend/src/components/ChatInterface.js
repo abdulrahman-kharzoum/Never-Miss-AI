@@ -4,6 +4,7 @@ import { sendMessageToN8N } from '../utils/api';
 import { tokenManager } from '../utils/tokenManager';
 import VoiceRecorder from './VoiceRecorder';
 import AudioPlayer from './AudioPlayer';
+import MarkdownRenderer from './MarkdownRenderer';
 import NavigationTabs from './NavigationTabs';
 import DashboardTab from './DashboardTab';
 import SettingsTab from './SettingsTab';
