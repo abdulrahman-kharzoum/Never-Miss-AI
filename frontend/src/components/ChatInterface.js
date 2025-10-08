@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../utils/supabaseClient';
-import { sendMessageToN8N } from '../utils/api';
+import { sendMessageToN8N, sendAudioToN8N } from '../utils/api';
 import { tokenManager } from '../utils/tokenManager';
 import VoiceRecorder from './VoiceRecorder';
 import AudioPlayer from './AudioPlayer';
