@@ -419,6 +419,8 @@ const ChatInterface = ({ user, onSignOut }) => {
                     >
                       {message.message_type === 'audio' ? (
                         <AudioPlayer audioUrl={message.content} />
+                      ) : message.sender === 'ai' ? (
+                        <MarkdownRenderer content={message.content} />
                       ) : (
                         <p className="whitespace-pre-wrap break-words">{message.content}</p>
                       )}
