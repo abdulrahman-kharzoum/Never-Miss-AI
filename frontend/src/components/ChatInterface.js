@@ -220,7 +220,7 @@ const ChatInterface = ({ user, onSignOut }) => {
             <img
               src={user.photoURL}
               alt={user.displayName}
-              className="w-10 h-10 rounded-full border-2 border-indigo-500"
+              className="w-10 h-10 rounded-full border-2 border-blue-500"
             />
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-gray-800 truncate">{user.displayName}</div>
