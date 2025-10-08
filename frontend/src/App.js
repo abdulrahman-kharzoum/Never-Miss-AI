@@ -150,9 +150,9 @@ function App() {
             
             <div className="text-center mb-6">
               <div className="inline-flex items-center justify-center space-x-2 mb-4">
-                <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-cyan-500 rounded-full animate-pulse"></div>
-                <div className="w-2 h-2 bg-gradient-to-r from-cyan-400 to-teal-500 rounded-full animate-pulse delay-100"></div>
-                <div className="w-2 h-2 bg-gradient-to-r from-teal-400 to-blue-500 rounded-full animate-pulse delay-200"></div>
+                <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-gradient-to-r from-blue-600 to-blue-700 rounded-full animate-pulse delay-100"></div>
+                <div className="w-2 h-2 bg-gradient-to-r from-blue-700 to-blue-800 rounded-full animate-pulse delay-200"></div>
               </div>
               <p className="text-gray-700 font-medium">Welcome! Sign in to get started</p>
             </div>
