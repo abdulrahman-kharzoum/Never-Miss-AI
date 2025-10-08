@@ -40,6 +40,34 @@ export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refres
   }
 };
 
+export const sendAudioToN8N = async (sessionId, audioFile, accessToken, refreshToken) => {
+  try {
+    const N8N_API_KEY = process.env.REACT_APP_N8N_API_KEY || 'test_key';
+    
+    const response = await axios.post(
+      N8N_WEBHOOK_URL,
+      {
+        sessionId,
+        action: 'sendMessage',
+        messageType: 'audio',
+        audioFile: audioFile, // Base64 encoded audio
+        accessToken: accessToken || '',
+        refreshToken: refreshToken || ''
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${N8N_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error sending audio to N8N:', error);
+    throw error;
+  }
+};
+
 export const validateToken = async (userId) => {
   try {
     const response = await axios.post(`${BACKEND_URL}/api/auth/validate-token`, { userId });
