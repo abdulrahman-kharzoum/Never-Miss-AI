@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth, googleProvider } from './firebase';
 import ChatInterface from './components/ChatInterface';
+import { tokenManager } from './utils/tokenManager';
+import { storeUserToken } from './utils/api';
 import './App.css';
 
 function App() {
@@ -9,8 +11,59 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    // Load tokens from localStorage
+    tokenManager.loadTokens();
+
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        
+        // Get tokens from Firebase
+        try {
+          const token = await currentUser.getIdToken();
+          const tokenResult = await currentUser.getIdTokenResult();
+          
+          // Calculate expiry time (1 hour from now)
+          const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString();
+          
+          // Store tokens in backend
+          const tokenData = {
+            userId: currentUser.uid,
+            email: currentUser.email,
+            displayName: currentUser.displayName || 'User',
+            photoURL: currentUser.photoURL,
+            accessToken: token,
+            refreshToken: currentUser.refreshToken || null,
+            expiresAt: expiresAt,
+            scopes: [
+              'gmail.readonly',
+              'gmail.modify',
+              'calendar',
+              'calendar.events',
+              'drive',
+              'drive.file'
+            ]
+          };
+          
+          await storeUserToken(tokenData);
+          
+          // Store in token manager
+          tokenManager.setTokens(
+            token,
+            currentUser.refreshToken,
+            currentUser.uid,
+            expiresAt
+          );
+          
+          console.log('✅ Tokens stored successfully');
+        } catch (error) {
+          console.error('❌ Error storing tokens:', error);
+        }
+      } else {
+        setUser(null);
+        tokenManager.clearTokens();
+      }
+      
       setLoading(false);
     });
 
@@ -35,6 +88,7 @@ function App() {
     try {
       await signOut(auth);
       setUser(null);
+      tokenManager.clearTokens();
       console.log('✅ User signed out');
     } catch (error) {
       console.error('❌ Error signing out:', error);
@@ -43,41 +97,62 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-blue-600">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 animate-gradient">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-white mb-4"></div>
+          <div className="text-white text-xl font-semibold">Loading NeverMiss...</div>
+        </div>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-600 to-blue-600 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 animate-gradient p-4">
         <div className="max-w-md w-full">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-white mb-2">AI Chat</h1>
-            <p className="text-purple-200">Sign in to start chatting</p>
+          <div className="text-center mb-8 animate-fade-in">
+            <div className="inline-block p-4 bg-white/20 backdrop-blur-lg rounded-full mb-4 animate-bounce-slow">
+              <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+            </div>
+            <h1 className="text-5xl font-bold text-white mb-3 tracking-tight">NeverMiss</h1>
+            <p className="text-xl text-white/90 font-medium">Your AI-Powered Productivity Assistant</p>
+            <p className="text-white/70 mt-2">Manage emails, calendar, and tasks with AI</p>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-2xl p-8">
+          <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 animate-slide-up">
             <div className="text-center mb-6">
-              <svg className="w-20 h-20 mx-auto text-blue-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              <p className="text-gray-600">Welcome to your AI assistant</p>
+              <div className="inline-flex items-center justify-center space-x-2 mb-4">
+                <div className="w-2 h-2 bg-gradient-to-r from-green-400 to-blue-500 rounded-full animate-pulse"></div>
+                <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full animate-pulse delay-100"></div>
+                <div className="w-2 h-2 bg-gradient-to-r from-yellow-400 to-red-500 rounded-full animate-pulse delay-200"></div>
+              </div>
+              <p className="text-gray-700 font-medium">Welcome! Sign in to get started</p>
             </div>
 
             <button
               onClick={handleGoogleSignIn}
-              className="w-full bg-white border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-lg font-semibold flex items-center justify-center hover:shadow-lg transition"
+              className="w-full bg-white border-2 border-gray-200 text-gray-700 px-8 py-4 rounded-xl font-semibold flex items-center justify-center hover:shadow-xl hover:scale-105 transition-all duration-300 group"
             >
-              <svg className="w-6 h-6 mr-3" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 mr-3 group-hover:rotate-12 transition-transform" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              Sign in with Google
+              Continue with Google
             </button>
+
+            <div className="mt-6 text-center">
+              <p className="text-xs text-gray-500">
+                By signing in, you agree to connect Gmail, Calendar, and Drive
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-6 text-center text-white/80 text-sm">
+            <p>✨ Never miss a meeting again</p>
           </div>
         </div>
       </div>
