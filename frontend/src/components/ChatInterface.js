@@ -128,8 +128,17 @@ const ChatInterface = ({ user, onSignOut }) => {
       if (userMsgError) throw userMsgError;
       await loadMessages(currentSession.session_id);
 
-      // Send to N8N
-      const n8nResponse = await sendMessageToN8N(currentSession.session_id, userMessage);
+      // Get current tokens from tokenManager
+      const accessToken = tokenManager.getAccessToken();
+      const refreshToken = localStorage.getItem('refreshToken');
+      
+      // Send to N8N with tokens
+      const n8nResponse = await sendMessageToN8N(
+        currentSession.session_id, 
+        userMessage,
+        accessToken,
+        refreshToken
+      );
       
       let aiResponse = 'I received your message!';
       if (n8nResponse && n8nResponse.output) {
