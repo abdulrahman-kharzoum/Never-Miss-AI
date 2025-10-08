@@ -101,8 +101,58 @@ function App() {
     setError(null);
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      setUser(result.user);
-      console.log('✅ User signed in:', result.user.email);
+      const user = result.user;
+      
+      // Get Google-specific access and refresh tokens from credential
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const googleAccessToken = credential.accessToken;
+      
+      // Calculate token expiration (typically 1 hour)
+      const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString();
+      
+      console.log('✅ User signed in:', user.email);
+      console.log('✅ Got Google OAuth access token');
+      
+      // Store user
+      setUser(user);
+      
+      // Store tokens in backend (only on new login)
+      const tokenData = {
+        userId: user.uid,
+        email: user.email,
+        displayName: user.displayName || 'User',
+        photoURL: user.photoURL,
+        accessToken: googleAccessToken,
+        refreshToken: user.refreshToken || null,
+        expiresAt: expiresAt,
+        scopes: [
+          'https://www.googleapis.com/auth/userinfo.profile',
+          'https://www.googleapis.com/auth/userinfo.email',
+          'https://www.googleapis.com/auth/gmail.readonly',
+          'https://www.googleapis.com/auth/gmail.modify',
+          'https://www.googleapis.com/auth/calendar',
+          'https://www.googleapis.com/auth/calendar.events',
+          'https://www.googleapis.com/auth/drive',
+          'https://www.googleapis.com/auth/drive.file'
+        ]
+      };
+      
+      try {
+        await storeUserToken(tokenData);
+        console.log('✅ Tokens stored in backend');
+      } catch (backendError) {
+        console.warn('⚠️ Backend storage failed:', backendError.message);
+      }
+      
+      // Store in token manager
+      tokenManager.setTokens(
+        googleAccessToken,
+        user.refreshToken,
+        user.uid,
+        expiresAt
+      );
+      
+      console.log('✅ Tokens stored in localStorage');
     } catch (error) {
       console.error('❌ Error signing in:', error);
       setError('Failed to sign in. Please try again.');
