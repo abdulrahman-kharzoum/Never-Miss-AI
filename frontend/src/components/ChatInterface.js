@@ -174,10 +174,10 @@ const ChatInterface = ({ user, onSignOut }) => {
   };
 
   return (
-    <div className="h-screen flex bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="h-screen flex bg-gradient-to-br from-blue-50 via-cyan-50 to-teal-50">
       {/* Sidebar */}
-      <div className={`${showSidebar ? 'w-80' : 'w-0'} bg-white border-r border-gray-200 transition-all duration-300 overflow-hidden flex flex-col`}>
-        <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-indigo-500 to-purple-600">
+      <div className={`${showSidebar ? 'w-80' : 'w-0'} bg-white border-r border-blue-100 transition-all duration-300 overflow-hidden flex flex-col`}>
+        <div className="p-4 border-b border-blue-100 bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-white">NeverMiss</h2>
             <button
