@@ -60,7 +60,18 @@ function App() {
       
       // Get Google-specific access and refresh tokens from credential
       const credential = GoogleAuthProvider.credentialFromResult(result);
-      const googleAccessToken = credential.accessToken;
+      const googleAccessToken = credential?.accessToken;
+      const googleRefreshToken = credential?.refreshToken; // Available with access_type: 'offline'
+      
+      // Debug: Log what we got
+      console.log('🔍 Credential:', credential);
+      console.log('🔍 Access Token:', googleAccessToken);
+      console.log('🔍 Refresh Token:', googleRefreshToken);
+      
+      if (!googleAccessToken) {
+        console.error('❌ No access token in credential!');
+        throw new Error('Failed to get Google access token');
+      }
       
       // Calculate token expiration (typically 1 hour)
       const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString();
