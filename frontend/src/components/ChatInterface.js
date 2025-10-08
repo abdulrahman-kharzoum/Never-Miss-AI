@@ -228,8 +228,8 @@ const ChatInterface = ({ user, onSignOut }) => {
       reader.onloadend = async () => {
         const base64Audio = reader.result;
         
-        // Save audio message
-        const { error } = await supabase
+        // Save user audio message to Supabase
+        const { error: userMsgError } = await supabase
           .from('chat_messages')
           .insert({
             session_id: currentSession.session_id,
@@ -240,8 +240,59 @@ const ChatInterface = ({ user, onSignOut }) => {
             timestamp: new Date().toISOString()
           });
 
-        if (error) throw error;
+        if (userMsgError) throw userMsgError;
         await loadMessages(currentSession.session_id);
+
+        // Get tokens
+        const accessToken = tokenManager.getAccessToken();
+        const refreshToken = localStorage.getItem('refreshToken');
+        
+        // Debug: Log tokens being sent
+        console.log('🔍 Sending AUDIO to N8N:');
+        console.log('  Access Token:', accessToken ? accessToken.substring(0, 20) + '...' : 'EMPTY');
+        console.log('  Refresh Token:', refreshToken ? refreshToken.substring(0, 20) + '...' : 'EMPTY');
+        
+        // Send audio to N8N webhook
+        const n8nResponse = await sendAudioToN8N(
+          currentSession.session_id,
+          base64Audio,
+          accessToken,
+          refreshToken
+        );
+        
+        // Parse N8N response
+        let aiResponse = 'Audio received!';
+        if (n8nResponse) {
+          if (Array.isArray(n8nResponse) && n8nResponse.length > 0 && n8nResponse[0].output) {
+            aiResponse = n8nResponse[0].output;
+          } else if (n8nResponse.output) {
+            aiResponse = n8nResponse.output;
+          }
+        }
+
+        // Save AI response
+        const { error: aiMsgError } = await supabase
+          .from('chat_messages')
+          .insert({
+            session_id: currentSession.session_id,
+            user_id: user.uid,
+            message_type: 'text',
+            content: aiResponse,
+            sender: 'ai',
+            timestamp: new Date().toISOString()
+          });
+
+        if (aiMsgError) throw aiMsgError;
+        await loadMessages(currentSession.session_id);
+
+        // Update session
+        await supabase
+          .from('chat_sessions')
+          .update({
+            updated_at: new Date().toISOString(),
+            message_count: messages.length + 2
+          })
+          .eq('session_id', currentSession.session_id);
       };
     } catch (error) {
       console.error('Error sending audio:', error);
