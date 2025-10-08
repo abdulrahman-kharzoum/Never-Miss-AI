@@ -16,13 +16,11 @@ function App() {
     // Load tokens from localStorage
     tokenManager.loadTokens();
 
-    // Set timeout for loading - return to login after 90 seconds
+    // Set timeout for loading - return to login after 15 seconds (for initial load only)
     const loadingTimeout = setTimeout(() => {
-      console.log('⏱️ Loading timeout - returning to login');
+      console.log('⏱️ Loading timeout - Firebase auth check complete');
       setLoading(false);
-      setUser(null);
-      tokenManager.clearTokens();
-    }, 90000); // 90 seconds = 1.5 minutes
+    }, 15000); // 15 seconds
 
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       clearTimeout(loadingTimeout); // Clear timeout if auth completes
