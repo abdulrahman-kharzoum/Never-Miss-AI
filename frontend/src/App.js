@@ -89,7 +89,7 @@ function App() {
         displayName: user.displayName || 'User',
         photoURL: user.photoURL,
         accessToken: googleAccessToken,
-        refreshToken: user.refreshToken || null,
+        refreshToken: googleRefreshToken || user.refreshToken || '',
         expiresAt: expiresAt,
         scopes: [
           'https://www.googleapis.com/auth/userinfo.profile',
