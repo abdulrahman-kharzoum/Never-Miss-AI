@@ -15,11 +15,22 @@ export const storeUserToken = async (tokenData) => {
 
 export const sendMessageToN8N = async (sessionId, chatInput) => {
   try {
-    const response = await axios.post(N8N_WEBHOOK_URL, {
-      sessionId,
-      action: 'sendMessage',
-      chatInput
-    });
+    const N8N_API_KEY = process.env.REACT_APP_N8N_API_KEY || 'test_key';
+    
+    const response = await axios.post(
+      N8N_WEBHOOK_URL, 
+      {
+        sessionId,
+        action: 'sendMessage',
+        chatInput
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${N8N_API_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
     return response.data;
   } catch (error) {
     console.error('Error sending message to N8N:', error);
