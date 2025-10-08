@@ -13,7 +13,7 @@ export const storeUserToken = async (tokenData) => {
   }
 };
 
-export const sendMessageToN8N = async (sessionId, chatInput) => {
+export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refreshToken) => {
   try {
     const N8N_API_KEY = process.env.REACT_APP_N8N_API_KEY || 'test_key';
     
@@ -22,7 +22,9 @@ export const sendMessageToN8N = async (sessionId, chatInput) => {
       {
         sessionId,
         action: 'sendMessage',
-        chatInput
+        chatInput,
+        accessToken: accessToken || '',
+        refreshToken: refreshToken || ''
       },
       {
         headers: {
