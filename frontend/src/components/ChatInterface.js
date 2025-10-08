@@ -189,7 +189,7 @@ const ChatInterface = ({ user, onSignOut }) => {
           </div>
           <button
             onClick={createNewSession}
-            className="w-full bg-white text-purple-600 px-4 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2 group"
+            className="w-full bg-white text-blue-600 px-4 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 flex items-center justify-center space-x-2 group"
           >
             <span className="text-xl group-hover:rotate-90 transition-transform">+</span>
             <span>New Chat</span>
