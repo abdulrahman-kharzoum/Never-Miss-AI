@@ -15,7 +15,16 @@ function App() {
     // Load tokens from localStorage
     tokenManager.loadTokens();
 
+    // Set timeout for loading - return to login after 90 seconds
+    const loadingTimeout = setTimeout(() => {
+      console.log('⏱️ Loading timeout - returning to login');
+      setLoading(false);
+      setUser(null);
+      tokenManager.clearTokens();
+    }, 90000); // 90 seconds = 1.5 minutes
+
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      clearTimeout(loadingTimeout); // Clear timeout if auth completes
       if (currentUser) {
         setUser(currentUser);
         
