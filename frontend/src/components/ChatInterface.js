@@ -299,8 +299,8 @@ const ChatInterface = ({ user, onSignOut }) => {
                 <div
                   className={`max-w-[70%] rounded-2xl px-5 py-3 shadow-md ${
                     message.sender === 'user'
-                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-br-none'
-                      : 'bg-white text-gray-800 rounded-bl-none border border-gray-200'
+                      ? 'bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 text-white rounded-br-none'
+                      : 'bg-white text-gray-800 rounded-bl-none border-2 border-blue-200 animate-glow'
                   }`}
                 >
                   <p className="whitespace-pre-wrap break-words">{message.content}</p>
