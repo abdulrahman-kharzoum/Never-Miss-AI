@@ -343,29 +343,36 @@ const ChatInterface = ({ user, onSignOut }) => {
                 </div>
               </div>
             ) : (
-              messages.map((message, index) => (
-                <div
-                  key={message.id || index}
-                  className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}
-                >
+              messages.map((message, index) => {
+                // Check if this is the last AI message
+                const isLastAIMessage = message.sender === 'ai' && 
+                  index === messages.length - 1 ||
+                  (index < messages.length - 1 && messages[index + 1].sender === 'user');
+                
+                return (
                   <div
-                    className={`max-w-[70%] rounded-2xl px-5 py-3 shadow-md ${
-                      message.sender === 'user'
-                        ? 'bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 text-white rounded-br-none'
-                        : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white rounded-bl-none border-2 border-blue-300 dark:border-blue-600 animate-glow'
-                    }`}
+                    key={message.id || index}
+                    className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}
                   >
-                    {message.message_type === 'audio' ? (
-                      <AudioPlayer audioUrl={message.content} />
-                    ) : (
-                      <p className="whitespace-pre-wrap break-words">{message.content}</p>
-                    )}
-                    <div className={`text-xs mt-2 ${message.sender === 'user' ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'}`}>
-                      {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <div
+                      className={`max-w-[70%] rounded-2xl px-5 py-3 shadow-md ${
+                        message.sender === 'user'
+                          ? 'bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 text-white rounded-br-none'
+                          : `bg-white dark:bg-gray-800 text-gray-800 dark:text-white rounded-bl-none border-2 border-blue-300 dark:border-blue-600 ${isLastAIMessage ? 'animate-glow' : ''}`
+                      }`}
+                    >
+                      {message.message_type === 'audio' ? (
+                        <AudioPlayer audioUrl={message.content} />
+                      ) : (
+                        <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                      )}
+                      <div className={`text-xs mt-2 ${message.sender === 'user' ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'}`}>
+                        {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
             {sending && (
               <div className="flex justify-start animate-slide-up">
