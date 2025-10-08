@@ -128,7 +128,7 @@ function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 via-cyan-500 to-teal-500 animate-gradient p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 animate-gradient p-4">
         <div className="max-w-md w-full">
           <div className="text-center mb-8 animate-fade-in">
             <div className="inline-block p-4 bg-white/20 backdrop-blur-lg rounded-full mb-4 animate-bounce-slow">
