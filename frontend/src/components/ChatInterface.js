@@ -313,11 +313,11 @@ const ChatInterface = ({ user, onSignOut }) => {
           )}
           {sending && (
             <div className="flex justify-start animate-slide-up">
-              <div className="bg-white text-gray-800 rounded-2xl rounded-bl-none px-5 py-3 shadow-md border-2 border-blue-200 animate-glow">
+              <div className="bg-white text-gray-800 rounded-2xl rounded-bl-none px-5 py-3 shadow-md border-2 border-blue-300 animate-glow">
                 <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                  <div className="w-2 h-2 bg-cyan-500 rounded-full animate-pulse delay-100"></div>
-                  <div className="w-2 h-2 bg-teal-500 rounded-full animate-pulse delay-200"></div>
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                  <div className="w-2 h-2 bg-blue-700 rounded-full animate-pulse delay-100"></div>
+                  <div className="w-2 h-2 bg-blue-800 rounded-full animate-pulse delay-200"></div>
                   <span className="text-gray-600 ml-2">AI is thinking...</span>
                 </div>
               </div>
