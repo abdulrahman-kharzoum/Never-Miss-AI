@@ -338,7 +338,7 @@ const ChatInterface = ({ user, onSignOut }) => {
                   onKeyPress={handleKeyPress}
                   placeholder="Type your message... (Press Enter to send)"
                   disabled={sending}
-                  className="w-full px-5 py-4 rounded-2xl border-2 border-gray-200 focus:border-indigo-500 focus:outline-none resize-none transition-all duration-300 disabled:bg-gray-50 disabled:text-gray-500"
+                  className="w-full px-5 py-4 rounded-2xl border-2 border-blue-200 focus:border-blue-500 focus:outline-none resize-none transition-all duration-300 disabled:bg-gray-50 disabled:text-gray-500"
                   rows="1"
                   style={{ maxHeight: '120px' }}
                 />
