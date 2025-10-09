@@ -13,7 +13,7 @@ export const storeUserToken = async (tokenData) => {
   }
 };
 
-export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refreshToken) => {
+export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refreshToken, userName = '', userEmail = '') => {
   try {
     const N8N_API_KEY = process.env.REACT_APP_N8N_API_KEY || 'test_key';
     
@@ -24,6 +24,8 @@ export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refres
         action: 'sendMessage',
         messageType: 'text',
         chatInput,
+        userName,
+        userEmail,
         accessToken: accessToken || '',
         refreshToken: refreshToken || ''
       },
@@ -41,7 +43,7 @@ export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refres
   }
 };
 
-export const sendAudioToN8N = async (sessionId, audioFile, accessToken, refreshToken) => {
+export const sendAudioToN8N = async (sessionId, audioFile, accessToken, refreshToken, userName = '', userEmail = '') => {
   try {
     const N8N_API_KEY = process.env.REACT_APP_N8N_API_KEY || 'test_key';
     
@@ -52,6 +54,8 @@ export const sendAudioToN8N = async (sessionId, audioFile, accessToken, refreshT
         action: 'sendMessage',
         messageType: 'audio',
         audioFile: audioFile, // Base64 encoded audio
+        userName,
+        userEmail,
         accessToken: accessToken || '',
         refreshToken: refreshToken || ''
       },

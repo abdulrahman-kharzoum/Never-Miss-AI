@@ -140,10 +140,12 @@ const ChatInterface = ({ user, onSignOut }) => {
       
       // Send to N8N with tokens
       const n8nResponse = await sendMessageToN8N(
-        currentSession.session_id, 
+        currentSession.session_id,
         userMessage,
         accessToken,
-        refreshToken
+        refreshToken,
+        user?.name || '',
+        user?.email || ''
       );
       
       // Parse N8N response - it returns an array with output field
@@ -260,7 +262,9 @@ const ChatInterface = ({ user, onSignOut }) => {
           currentSession.session_id,
           base64AudioForN8N, // Send only the base64 part
           accessToken,
-          refreshToken
+          refreshToken,
+          user?.name || '',
+          user?.email || ''
         );
         
         let aiResponseContent;
