@@ -253,20 +253,42 @@ const ChatInterface = ({ user, onSignOut }) => {
         console.log('  Refresh Token:', refreshToken ? refreshToken.substring(0, 20) + '...' : 'EMPTY');
         
         // Send audio to N8N webhook
-        const n8nResponse = await sendAudioToN8N(
+        const n8nResponseBlob = await sendAudioToN8N(
           currentSession.session_id,
           base64Audio,
           accessToken,
           refreshToken
         );
         
-        // Parse N8N response
-        let aiResponse = 'Audio received!';
-        if (n8nResponse) {
-          if (Array.isArray(n8nResponse) && n8nResponse.length > 0 && n8nResponse[0].output) {
-            aiResponse = n8nResponse[0].output;
-          } else if (n8nResponse.output) {
-            aiResponse = n8nResponse.output;
+        let aiResponseContent;
+        let messageType = 'text'; // Default to text
+        let isAiAudio = false;
+
+        // Check if the response is a blob and is an MP3 audio type
+        if (n8nResponseBlob instanceof Blob && n8nResponseBlob.type === 'audio/mpeg') {
+          // Convert blob to a base64 string to store in Supabase
+          const reader = new FileReader();
+          reader.readAsDataURL(n8nResponseBlob);
+          aiResponseContent = await new Promise((resolve) => {
+            reader.onloadend = () => {
+              resolve(reader.result);
+            };
+          });
+          messageType = 'audio';
+          isAiAudio = true;
+        } else {
+          // If it's not audio, assume it's a text message (or an error)
+          // We need to handle this case, maybe the server sends JSON with an error message
+          aiResponseContent = 'Received a non-audio response.';
+          try {
+            // Try to parse it as JSON in case it's an error message
+            const textResponse = await n8nResponseBlob.text();
+            const jsonResponse = JSON.parse(textResponse);
+            if (jsonResponse && jsonResponse.output) {
+              aiResponseContent = jsonResponse.output;
+            }
+          } catch (e) {
+            // Not a JSON response, stick with the default message
           }
         }
 
@@ -276,10 +298,11 @@ const ChatInterface = ({ user, onSignOut }) => {
           .insert({
             session_id: currentSession.session_id,
             user_id: user.uid,
-            message_type: 'text',
-            content: aiResponse,
+            message_type: messageType,
+            content: aiResponseContent,
             sender: 'ai',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            metadata: { autoplay: isAiAudio }
           });
 
         if (aiMsgError) throw aiMsgError;
@@ -461,6 +484,11 @@ const ChatInterface = ({ user, onSignOut }) => {
                   index === messages.length - 1 ||
                   (index < messages.length - 1 && messages[index + 1].sender === 'user');
                 
+                const shouldAutoplay = message.sender === 'ai' &&
+                                     message.message_type === 'audio' &&
+                                     message.metadata?.autoplay &&
+                                     index === messages.length - 1;
+
                 return (
                   <div
                     key={message.id || index}
@@ -474,7 +502,7 @@ const ChatInterface = ({ user, onSignOut }) => {
                       }`}
                     >
                       {message.message_type === 'audio' ? (
-                        <AudioPlayer audioUrl={message.content} />
+                        <AudioPlayer audioUrl={message.content} autoplay={shouldAutoplay} />
                       ) : message.sender === 'ai' ? (
                         <MarkdownRenderer content={message.content} />
                       ) : (
