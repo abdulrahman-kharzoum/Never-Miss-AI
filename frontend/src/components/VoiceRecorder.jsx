@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import MicRecorder from 'mic-recorder-to-mp3';
 
 const VoiceRecorder = ({ onRecordingComplete, disabled }) => {
   const [isRecording, setIsRecording] = useState(false);
@@ -6,32 +7,24 @@ const VoiceRecorder = ({ onRecordingComplete, disabled }) => {
   const [audioBlob, setAudioBlob] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
+  const recorderRef = useRef(null);
   const timerRef = useRef(null);
   const audioRef = useRef(null);
-  const streamRef = useRef(null);
+
+  useEffect(() => {
+    // Initialize the recorder
+    recorderRef.current = new MicRecorder({
+      bitRate: 128,
+    });
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
   
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-      
-      mediaRecorder.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
-      };
-      
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        setAudioBlob(blob);
-        stream.getTracks().forEach(track => track.stop());
-      };
-      
-      mediaRecorder.start();
+      await recorderRef.current.start();
       setIsRecording(true);
       
       // Start timer
@@ -51,23 +44,30 @@ const VoiceRecorder = ({ onRecordingComplete, disabled }) => {
     }
   };
   
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      clearInterval(timerRef.current);
-      
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+  const stopRecording = async () => {
+    if (isRecording) {
+      try {
+        const [buffer, blob] = await recorderRef.current.stop().getMp3();
+        const file = new File(buffer, 'voice-message.mp3', {
+          type: 'audio/mpeg',
+          lastModified: Date.now()
+        });
+        setAudioBlob(file);
+        setIsRecording(false);
+        clearInterval(timerRef.current);
+      } catch (error) {
+        console.error("Failed to stop recording:", error);
+        // Handle error, maybe show a notification to the user
       }
     }
   };
   
   const cancelRecording = () => {
-    stopRecording();
+    if (isRecording) {
+      stopRecording(); // Stop recording first
+    }
     setAudioBlob(null);
     setRecordingTime(0);
-    audioChunksRef.current = [];
   };
   
   const sendRecording = () => {
@@ -93,9 +93,6 @@ const VoiceRecorder = ({ onRecordingComplete, disabled }) => {
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
     };
   }, []);
   

@@ -22,6 +22,7 @@ export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refres
       {
         sessionId,
         action: 'sendMessage',
+        messageType: 'text',
         chatInput,
         accessToken: accessToken || '',
         refreshToken: refreshToken || ''
@@ -58,7 +59,8 @@ export const sendAudioToN8N = async (sessionId, audioFile, accessToken, refreshT
         headers: {
           'Authorization': `Bearer ${N8N_API_KEY}`,
           'Content-Type': 'application/json'
-        }
+        },
+        responseType: 'blob' // Expect a binary response
       }
     );
     return response.data;
