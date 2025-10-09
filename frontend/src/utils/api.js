@@ -60,7 +60,7 @@ export const sendAudioToN8N = async (sessionId, audioFile, accessToken, refreshT
           'Authorization': `Bearer ${N8N_API_KEY}`,
           'Content-Type': 'application/json'
         },
-        responseType: 'blob' // Expect a binary response
+        responseType: 'text' // Treat the response as plain text
       }
     );
     return response.data;

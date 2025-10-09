@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 
-const AudioPlayer = ({ audioUrl, audioBlob }) => {
+const AudioPlayer = ({ audioUrl, audioBlob, autoplay = false }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -8,14 +8,19 @@ const AudioPlayer = ({ audioUrl, audioBlob }) => {
   
   const src = audioUrl || (audioBlob ? URL.createObjectURL(audioBlob) : null);
   
-  const togglePlay = () => {
-    if (audioRef.current) {
+  const togglePlay = async () => {
+    if (!audioRef.current) return;
+    try {
       if (isPlaying) {
         audioRef.current.pause();
+        setIsPlaying(false);
       } else {
-        audioRef.current.play();
+        await audioRef.current.play();
+        setIsPlaying(true);
       }
-      setIsPlaying(!isPlaying);
+    } catch (err) {
+      // Autoplay denied or other playback error
+      console.warn('Audio playback failed:', err);
     }
   };
   
@@ -68,6 +73,7 @@ const AudioPlayer = ({ audioUrl, audioBlob }) => {
         onTimeUpdate={(e) => setCurrentTime(e.target.currentTime)}
         onLoadedMetadata={(e) => setDuration(e.target.duration)}
         onEnded={() => setIsPlaying(false)}
+        autoPlay={autoplay}
       />
     </div>
   );

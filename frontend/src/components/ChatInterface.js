@@ -226,7 +226,7 @@ const ChatInterface = ({ user, onSignOut }) => {
       const reader = new FileReader();
       reader.readAsDataURL(audioBlob);
       reader.onloadend = async () => {
-        const base64Audio = reader.result;
+        const base64AudioDataUrl = reader.result;
         
         // Save user audio message to Supabase
         const { error: userMsgError } = await supabase
@@ -235,7 +235,7 @@ const ChatInterface = ({ user, onSignOut }) => {
             session_id: currentSession.session_id,
             user_id: user.uid,
             message_type: 'audio',
-            content: base64Audio,
+            content: base64AudioDataUrl, // Keep the full data URL for Supabase
             sender: 'user',
             timestamp: new Date().toISOString()
           });
@@ -252,10 +252,13 @@ const ChatInterface = ({ user, onSignOut }) => {
         console.log('  Access Token:', accessToken ? accessToken.substring(0, 20) + '...' : 'EMPTY');
         console.log('  Refresh Token:', refreshToken ? refreshToken.substring(0, 20) + '...' : 'EMPTY');
         
+        // Strip the data URL prefix to send only the raw base64 string
+        const base64AudioForN8N = base64AudioDataUrl.split(',')[1];
+
         // Send audio to N8N webhook
-        const n8nResponseBlob = await sendAudioToN8N(
+        const n8nResponseText = await sendAudioToN8N(
           currentSession.session_id,
-          base64Audio,
+          base64AudioForN8N, // Send only the base64 part
           accessToken,
           refreshToken
         );
@@ -264,32 +267,111 @@ const ChatInterface = ({ user, onSignOut }) => {
         let messageType = 'text'; // Default to text
         let isAiAudio = false;
 
-        // Check if the response is a blob and is an MP3 audio type
-        if (n8nResponseBlob instanceof Blob && n8nResponseBlob.type === 'audio/mpeg') {
-          // Convert blob to a base64 string to store in Supabase
-          const reader = new FileReader();
-          reader.readAsDataURL(n8nResponseBlob);
-          aiResponseContent = await new Promise((resolve) => {
-            reader.onloadend = () => {
-              resolve(reader.result);
-            };
-          });
-          messageType = 'audio';
-          isAiAudio = true;
-        } else {
-          // If it's not audio, assume it's a text message (or an error)
-          // We need to handle this case, maybe the server sends JSON with an error message
-          aiResponseContent = 'Received a non-audio response.';
+        // Normalize and try to interpret the response in multiple common shapes:
+        // - JSON array: [{ data: "<base64>" }]
+        // - JSON object: { data: "<base64>" } or { output: "..." }
+        // - Plain data URL string: "data:audio/mpeg;base64,..."
+        // - Plain base64 string: "SUQz..."
+        const raw = typeof n8nResponseText === 'string' ? n8nResponseText.trim() : '';
+        console.debug('N8N raw response (truncated):', raw ? raw.slice(0, 300) : '<empty>');
+
+        let parsed = null;
+        try {
+          parsed = JSON.parse(raw);
+        } catch (e) {
+          // Not JSON -> we'll handle as plain string below
+        }
+
+        // If parsed is a string, it may be double-encoded JSON like "[{\"data\":\"...\"}]"
+        if (typeof parsed === 'string') {
           try {
-            // Try to parse it as JSON in case it's an error message
-            const textResponse = await n8nResponseBlob.text();
-            const jsonResponse = JSON.parse(textResponse);
-            if (jsonResponse && jsonResponse.output) {
-              aiResponseContent = jsonResponse.output;
-            }
+            const double = JSON.parse(parsed);
+            parsed = double;
           } catch (e) {
-            // Not a JSON response, stick with the default message
+            // still a plain string - we'll handle below
           }
+        }
+
+        const trySetAudioFromBase64 = (b64) => {
+          if (!b64) return false;
+          // If it already looks like a data URL, accept it
+          if (String(b64).startsWith('data:audio')) {
+            aiResponseContent = String(b64);
+            return true;
+          }
+          // Strip potential surrounding quotes
+          let cleaned = String(b64).replace(/^"|"$/g, '').trim();
+          // Remove all whitespace/newlines which sometimes appear in base64 payloads
+          cleaned = cleaned.replace(/\s+/g, '');
+          // If plus signs were turned into spaces earlier in transport, try to repair
+          if (cleaned.indexOf(' ') !== -1) cleaned = cleaned.replace(/ /g, '+');
+          // Basic base64 check using a portion of the string
+          const prefix = cleaned.slice(0, 40);
+          if (/^[A-Za-z0-9+/=]+$/.test(prefix)) {
+            aiResponseContent = `data:audio/mpeg;base64,${cleaned}`;
+            return true;
+          }
+          return false;
+        };
+
+        if (parsed) {
+          // Parsed JSON - handle different structures
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const first = parsed[0];
+            if (first && typeof first === 'object') {
+              if (first.data && trySetAudioFromBase64(first.data)) {
+                messageType = 'audio';
+                isAiAudio = true;
+              } else if (first.output && typeof first.output === 'string') {
+                aiResponseContent = first.output;
+                messageType = 'text';
+              }
+            } else if (typeof first === 'string') {
+              if (trySetAudioFromBase64(first)) {
+                messageType = 'audio';
+                isAiAudio = true;
+              } else {
+                aiResponseContent = first;
+                messageType = 'text';
+              }
+            }
+          } else if (typeof parsed === 'object') {
+            if (parsed.data && trySetAudioFromBase64(parsed.data)) {
+              messageType = 'audio';
+              isAiAudio = true;
+            } else if (parsed.output && typeof parsed.output === 'string') {
+              aiResponseContent = parsed.output;
+              messageType = 'text';
+            } else if (typeof parsed === 'string' && trySetAudioFromBase64(parsed)) {
+              messageType = 'audio';
+              isAiAudio = true;
+            }
+          } else if (typeof parsed === 'string') {
+            if (trySetAudioFromBase64(parsed)) {
+              messageType = 'audio';
+              isAiAudio = true;
+            } else {
+              aiResponseContent = parsed;
+              messageType = 'text';
+            }
+          }
+        }
+
+        // If parsing as JSON didn't yield an audio result, try the raw string
+        if (!isAiAudio && raw) {
+          const rawUnquoted = raw.replace(/^"|"$/g, '').trim();
+          if (rawUnquoted.startsWith('data:audio')) {
+            aiResponseContent = rawUnquoted;
+            messageType = 'audio';
+            isAiAudio = true;
+          } else if (trySetAudioFromBase64(rawUnquoted)) {
+            messageType = 'audio';
+            isAiAudio = true;
+          }
+        }
+
+        if (!isAiAudio && !aiResponseContent) {
+          aiResponseContent = 'Audio received, but the response was not in the expected format.';
         }
 
         // Save AI response
