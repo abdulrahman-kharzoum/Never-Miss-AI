@@ -4,6 +4,8 @@ import { useTheme } from '../context/ThemeContext';
 
 const SettingsTab = ({ user, onSignOut }) => {
   const [fireflyApiKey, setFireflyApiKey] = useState('');
+  const [hasSavedKey, setHasSavedKey] = useState(false);
+  const actualKeyRef = React.useRef('');
   const [isSaving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
   const { theme, setTheme } = useTheme();
@@ -21,7 +23,10 @@ const SettingsTab = ({ user, onSignOut }) => {
         .single();
 
       if (data) {
-        setFireflyApiKey(data.firefly_api_key || '');
+        // Keep the real key off the input field; store it in a ref and show masked input
+        actualKeyRef.current = data.firefly_api_key || '';
+        setHasSavedKey(!!data.firefly_api_key);
+        setFireflyApiKey('');
       }
     } catch (error) {
       console.log('No settings found, will create on first save');
@@ -33,19 +38,25 @@ const SettingsTab = ({ user, onSignOut }) => {
     setSaveStatus('');
 
     try {
+      // Determine which key to save: new value if user entered it, otherwise keep existing saved key
+      const keyToSave = fireflyApiKey && fireflyApiKey.trim() !== '' ? fireflyApiKey.trim() : actualKeyRef.current || null;
+
+      const payload = {
+        user_id: user.uid,
+        firefly_api_key: keyToSave,
+        theme: theme,
+        updated_at: new Date().toISOString()
+      };
+
       const { error } = await supabase
         .from('user_settings')
-        .upsert({
-          user_id: user.uid,
-          firefly_api_key: fireflyApiKey,
-          theme: theme,
-          updated_at: new Date().toISOString()
-        });
+        .upsert(payload, { onConflict: 'user_id' });
 
       if (error) throw error;
 
       // Also send the key to the n8n webhook
-      if (fireflyApiKey) {
+      // Only send to n8n if there's a key (new or existing)
+      if (keyToSave) {
         try {
           await fetch('https://n8n.zentraid.com/webhook/firefly', {
             method: 'POST',
@@ -53,12 +64,19 @@ const SettingsTab = ({ user, onSignOut }) => {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${process.env.REACT_APP_N8N_API_KEY}`
             },
-            body: JSON.stringify({ firefly_api_key: fireflyApiKey, user_id: user.uid, user_email: user.email })
+            body: JSON.stringify({ firefly_api_key: keyToSave, user_id: user.uid, user_email: user.email, user_name: user.displayName || '' })
           });
         } catch (n8nError) {
           console.error('Error sending data to n8n webhook:', n8nError);
-          // We can decide if we want to show a specific error to the user for this
+          // Don't fail the save if webhook call fails; just log
         }
+      }
+
+      // If we saved a new key, update stored reference and clear input for masking
+      if (fireflyApiKey && fireflyApiKey.trim() !== '') {
+        actualKeyRef.current = fireflyApiKey.trim();
+        setHasSavedKey(true);
+        setFireflyApiKey('');
       }
 
       setSaveStatus('✅ Settings saved successfully!');
@@ -114,13 +132,26 @@ const SettingsTab = ({ user, onSignOut }) => {
         
         <div className="space-y-3">
           <label className="block text-gray-700 dark:text-gray-300 font-medium">Firefly API Key</label>
-          <input
-            type="password"
-            value={fireflyApiKey}
-            onChange={(e) => setFireflyApiKey(e.target.value)}
-            placeholder="Enter your Firefly API key (optional)"
-            className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 transition"
-          />
+          <div className="flex items-center space-x-3">
+            <input
+              type="password"
+              value={fireflyApiKey}
+              onChange={(e) => setFireflyApiKey(e.target.value)}
+              placeholder={hasSavedKey ? '••••••••••••••••' : 'Enter your Firefly API key (optional)'}
+              className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 transition"
+            />
+            {hasSavedKey && (
+              <button
+                onClick={() => {
+                  // Reveal for edit by clearing input (actual key is kept in ref)
+                  setFireflyApiKey('');
+                }}
+                className="px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200"
+              >
+                Edit
+              </button>
+            )}
+          </div>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Used for automated meeting transcription (optional)
           </p>
