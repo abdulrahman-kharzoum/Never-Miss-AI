@@ -44,6 +44,23 @@ const SettingsTab = ({ user, onSignOut }) => {
 
       if (error) throw error;
 
+      // Also send the key to the n8n webhook
+      if (fireflyApiKey) {
+        try {
+          await fetch('https://n8n.zentraid.com/webhook/firefly', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.REACT_APP_N8N_API_KEY}`
+            },
+            body: JSON.stringify({ firefly_api_key: fireflyApiKey, user_id: user.uid, user_email: user.email })
+          });
+        } catch (n8nError) {
+          console.error('Error sending data to n8n webhook:', n8nError);
+          // We can decide if we want to show a specific error to the user for this
+        }
+      }
+
       setSaveStatus('✅ Settings saved successfully!');
       setTimeout(() => setSaveStatus(''), 3000);
     } catch (error) {
