@@ -523,7 +523,7 @@
 
 /* Send Button */
 .send-button {
-  background: linear-gradient(135deg, var(--accent-purple-1), var(--accent-purple-2));
+  background: var(--message-bg);
   border: none;
   border-radius: 50%;
   width: 44px;
@@ -541,7 +541,7 @@
   transform: translateY(-2px);
   box-shadow: 
     0 6px 16px rgba(111, 92, 153, 0.4),
-    0 0 20px rgba(168, 85, 247, 0.3);
+    0 0 20px var(--ai-message-glow);
 }
 
 .send-button:active {
