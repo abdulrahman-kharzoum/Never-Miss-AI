@@ -169,6 +169,8 @@
   background: var(--message-bg);
   box-shadow: 0 2px 8px rgba(111, 92, 153, 0.3);
   color: var(--text-primary);
+  position: relative;
+  animation: rainbowGlowPulse 3s ease-in-out infinite;
 }
 
 .nav-tab.active::before {
@@ -181,6 +183,62 @@
   height: 60%;
   background: var(--ai-message-glow);
   border-radius: 0 2px 2px 0;
+  animation: rainbowGlowBar 3s linear infinite;
+}
+
+/* Rainbow glow animation around active tab */
+.nav-tab.active::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    #ff0080,
+    #ff8c00,
+    #40e0d0,
+    #9400d3,
+    #4169e1,
+    #ff1493,
+    #00ff00,
+    #ff0080
+  );
+  background-size: 300% 100%;
+  animation: rainbowGlowBorder 4s linear infinite;
+  z-index: -1;
+  opacity: 0.6;
+  filter: blur(8px);
+}
+
+@keyframes rainbowGlowBorder {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
+@keyframes rainbowGlowPulse {
+  0%, 100% {
+    box-shadow: 
+      0 2px 8px rgba(111, 92, 153, 0.3),
+      0 0 15px rgba(255, 0, 128, 0.3),
+      0 0 25px rgba(64, 224, 208, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 4px 12px rgba(111, 92, 153, 0.5),
+      0 0 25px rgba(255, 140, 0, 0.5),
+      0 0 40px rgba(148, 0, 211, 0.3);
+  }
+}
+
+@keyframes rainbowGlowBar {
+  0% { background: #ff0080; }
+  14% { background: #ff8c00; }
+  28% { background: #40e0d0; }
+  42% { background: #9400d3; }
+  57% { background: #4169e1; }
+  71% { background: #ff1493; }
+  85% { background: #00ff00; }
+  100% { background: #ff0080; }
 }
 
 .nav-tab-icon {
