@@ -142,6 +142,10 @@ function App() {
     */
   };
 
+  // GOOGLE AUTH TEMPORARILY DISABLED - SKIP LOGIN SCREEN
+  // Loading and login screens are commented out for UI development
+  
+  /*
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 animate-gradient">
@@ -149,14 +153,8 @@ function App() {
           <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-white mb-4"></div>
           <div className="text-white text-xl font-semibold mb-4">Loading NeverMiss...</div>
           <p className="text-white/70 text-sm mb-6">This is taking longer than usual...</p>
-          <button
-            onClick={() => {
-              setLoading(false);
-              setUser(null);
-              tokenManager.clearTokens();
-            }}
-            className="px-6 py-3 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-all duration-300 backdrop-blur-sm"
-          >
+          <button onClick={() => { setLoading(false); setUser(null); tokenManager.clearTokens(); }}
+            className="px-6 py-3 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-all duration-300 backdrop-blur-sm">
             Return to Login
           </button>
         </div>
@@ -178,14 +176,12 @@ function App() {
             <p className="text-xl text-white/90 font-medium">Your AI-Powered Productivity Assistant</p>
             <p className="text-white/70 mt-2">Manage emails, calendar, and tasks with AI</p>
           </div>
-
           <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 animate-slide-up">
             {error && (
               <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
                 {error}
               </div>
             )}
-            
             <div className="text-center mb-6">
               <div className="inline-flex items-center justify-center space-x-2 mb-4">
                 <div className="w-2 h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full animate-pulse"></div>
@@ -194,11 +190,8 @@ function App() {
               </div>
               <p className="text-gray-700 font-medium">Welcome! Sign in to get started</p>
             </div>
-
-            <button
-              onClick={handleGoogleSignIn}
-              className="w-full bg-white border-2 border-gray-200 text-gray-700 px-8 py-4 rounded-xl font-semibold flex items-center justify-center hover:shadow-xl hover:scale-105 transition-all duration-300 group"
-            >
+            <button onClick={handleGoogleSignIn}
+              className="w-full bg-white border-2 border-gray-200 text-gray-700 px-8 py-4 rounded-xl font-semibold flex items-center justify-center hover:shadow-xl hover:scale-105 transition-all duration-300 group">
               <svg className="w-6 h-6 mr-3 group-hover:rotate-12 transition-transform" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -207,14 +200,12 @@ function App() {
               </svg>
               Continue with Google
             </button>
-
             <div className="mt-6 text-center">
               <p className="text-xs text-gray-500">
                 By signing in, you agree to connect Gmail, Calendar, and Drive
               </p>
             </div>
           </div>
-
           <div className="mt-6 text-center text-white/80 text-sm">
             <p>✨ Never miss a meeting again</p>
           </div>
@@ -222,6 +213,7 @@ function App() {
       </div>
     );
   }
+  */
 
   return (
     <ThemeProvider userId={user?.uid}>
