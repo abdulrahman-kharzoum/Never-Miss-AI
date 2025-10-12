@@ -488,7 +488,9 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         <div className={`sidebar-drawer ${showSidebar ? 'open' : ''}`}>
           <div className="sidebar-header">
             <div className="app-title">
-              <div className="app-logo">💬</div>
+              <div className="app-logo">
+                <img src="https://customer-assets.emergentagent.com/job_webauth-helper/artifacts/ksik3suf_nevermiss_logo-removebg-preview.png" alt="NeverMiss Logo" />
+              </div>
               NeverMiss
             </div>
             
