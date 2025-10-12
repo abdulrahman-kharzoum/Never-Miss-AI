@@ -14,6 +14,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Landing Page Gradient Colors */
+.min-h-screen.bg-gradient-to-br {
+  background: linear-gradient(135deg, #3a2766 0%, #6f5c99 50%, #00d4ff 100%);
+}
+
 /* Animations */
 @keyframes gradient {
   0% {
