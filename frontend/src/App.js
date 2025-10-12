@@ -22,24 +22,30 @@ function App() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // GOOGLE AUTH TEMPORARILY DISABLED - USING MOCK USER FOR UI DEVELOPMENT
     // Load tokens from localStorage
-    tokenManager.loadTokens();
+    // tokenManager.loadTokens();
 
-    // Set timeout for loading - return to login after 15 seconds (for initial load only)
+    console.log('🎨 UI Development Mode - Google Auth Disabled');
+    console.log('👤 Using mock user:', mockUser);
+    
+    // No authentication needed - directly set user
+    setUser(mockUser);
+    setLoading(false);
+
+    // Original authentication code commented out:
+    /*
     const loadingTimeout = setTimeout(() => {
       console.log('⏱️ Loading timeout - Firebase auth check complete');
       setLoading(false);
-    }, 15000); // 15 seconds
+    }, 15000);
 
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      clearTimeout(loadingTimeout); // Clear timeout if auth completes
+      clearTimeout(loadingTimeout);
       if (currentUser) {
         setUser(currentUser);
-        
-        // Check if we already have tokens in localStorage (page refresh scenario)
         const existingAccessToken = localStorage.getItem('accessToken');
         const existingUserId = localStorage.getItem('userId');
-        
         if (existingAccessToken && existingUserId === currentUser.uid) {
           console.log('🔄 Page refresh detected - loading tokens from localStorage');
           tokenManager.loadTokens();
@@ -50,7 +56,6 @@ function App() {
         setUser(null);
         tokenManager.clearTokens();
       }
-      
       setLoading(false);
     });
 
@@ -58,6 +63,7 @@ function App() {
       unsubscribe();
       clearTimeout(loadingTimeout);
     };
+    */
   }, []);
 
   const handleGoogleSignIn = async () => {
