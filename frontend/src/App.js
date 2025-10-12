@@ -1,15 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from 'firebase/auth';
-import { auth, googleProvider } from './firebase';
+// TEMPORARILY DISABLED FOR UI DEVELOPMENT
+// import { signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from 'firebase/auth';
+// import { auth, googleProvider } from './firebase';
 import ChatInterface from './components/ChatInterface';
-import { tokenManager } from './utils/tokenManager';
-import { storeUserToken } from './utils/api';
+// import { tokenManager } from './utils/tokenManager';
+// import { storeUserToken } from './utils/api';
 import { ThemeProvider } from './context/ThemeContext';
 import './App.css';
 
 function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // MOCK USER FOR UI DEVELOPMENT - Google Auth Temporarily Disabled
+  const mockUser = {
+    uid: 'mock-user-id-12345',
+    email: 'developer@example.com',
+    displayName: 'UI Developer',
+    photoURL: 'https://via.placeholder.com/150'
+  };
+  
+  const [user, setUser] = useState(mockUser); // Set to mock user by default
+  const [loading, setLoading] = useState(false); // No loading needed
   const [error, setError] = useState(null);
 
   useEffect(() => {
