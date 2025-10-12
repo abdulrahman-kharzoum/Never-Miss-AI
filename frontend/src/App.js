@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 // TEMPORARILY DISABLED FOR UI DEVELOPMENT
 // import { signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from 'firebase/auth';
 // import { auth, googleProvider } from './firebase';
-import ChatInterface from './components/ChatInterface';
+import ChatInterfaceNew from './components/ChatInterfaceNew';
 // import { tokenManager } from './utils/tokenManager';
 // import { storeUserToken } from './utils/api';
 import { ThemeProvider } from './context/ThemeContext';
