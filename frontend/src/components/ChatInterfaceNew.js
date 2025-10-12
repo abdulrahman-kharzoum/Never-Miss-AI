@@ -418,6 +418,34 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
     );
   }
 
+  // Pricing Tab
+  if (activeTab === 'pricing') {
+    return (
+      <div className="chat-interface-container">
+        {renderSidebar()}
+        <div className="main-chat-area">
+          <div style={{ overflowY: 'auto', flex: 1 }}>
+            <PricingTab />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // About Tab
+  if (activeTab === 'about') {
+    return (
+      <div className="chat-interface-container">
+        {renderSidebar()}
+        <div className="main-chat-area">
+          <div style={{ overflowY: 'auto', flex: 1 }}>
+            <AboutTab />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Sidebar Component
   function renderSidebar() {
     return (
