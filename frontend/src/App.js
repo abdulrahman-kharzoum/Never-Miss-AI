@@ -218,7 +218,7 @@ function App() {
   return (
     <ThemeProvider userId={user?.uid}>
       <div className="h-screen">
-        <ChatInterface user={user} onSignOut={handleSignOut} />
+        <ChatInterfaceNew user={user} onSignOut={handleSignOut} />
       </div>
     </ThemeProvider>
   );
