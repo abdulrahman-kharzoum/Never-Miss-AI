@@ -708,9 +708,6 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
                 <VoiceRecorder onRecordingComplete={handleVoiceRecording} disabled={sending} />
               </div>
             </div>
-            <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
-              Connected to AI • Token auto-refresh enabled ✅
-            </div>
           </div>
         </div>
       </div>
