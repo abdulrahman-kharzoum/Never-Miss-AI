@@ -1,0 +1,356 @@
+/* ========================================
+   SETTINGS TAB - THEME-AWARE STYLES
+   ======================================== */
+
+/* Import theme variables from parent */
+.settings-container {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.settings-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0;
+}
+
+/* Section Styling */
+.settings-section {
+  background: var(--secondary-bg);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
+}
+
+.settings-section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+/* Appearance Section */
+.theme-label {
+  display: block;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+}
+
+.theme-buttons-container {
+  display: flex;
+  gap: 1rem;
+}
+
+.theme-button {
+  flex: 1;
+  padding: 1rem 1.5rem;
+  border-radius: 0.75rem;
+  border: 2px solid var(--border-color);
+  background: transparent;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  text-align: center;
+}
+
+.theme-button:hover {
+  border-color: var(--accent-color-2);
+  transform: translateY(-2px);
+}
+
+.theme-button.active {
+  border-color: var(--accent-color-2);
+  background: var(--accent-color-1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Light mode specific theme button styling */
+[data-theme="light"] .theme-button.active {
+  background: rgba(248, 122, 20, 0.1);
+  border-color: #f87a14;
+}
+
+/* Dark mode specific theme button styling */
+[data-theme="dark"] .theme-button.active {
+  background: rgba(111, 92, 153, 0.3);
+  border-color: #6f5c99;
+}
+
+.theme-button-emoji {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.theme-button-text {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Integrations Section */
+.input-label {
+  display: block;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+}
+
+.input-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.api-key-input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  border: 2px solid var(--border-color);
+  background: var(--secondary-bg);
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.api-key-input:focus {
+  border-color: var(--accent-color-2);
+  box-shadow: 0 0 0 3px rgba(248, 122, 20, 0.1);
+}
+
+/* Light mode input styling */
+[data-theme="light"] .api-key-input {
+  background: #ffffff;
+  border-color: rgba(248, 122, 20, 0.2);
+  color: #11192b;
+}
+
+[data-theme="light"] .api-key-input:focus {
+  border-color: #f87a14;
+  box-shadow: 0 0 0 3px rgba(248, 122, 20, 0.1);
+}
+
+[data-theme="light"] .api-key-input::placeholder {
+  color: #4a5568;
+}
+
+/* Dark mode input styling */
+[data-theme="dark"] .api-key-input {
+  background: #2d2438;
+  border-color: rgba(111, 92, 153, 0.3);
+  color: #e8e3f0;
+}
+
+[data-theme="dark"] .api-key-input:focus {
+  border-color: #6f5c99;
+  box-shadow: 0 0 0 3px rgba(111, 92, 153, 0.2);
+}
+
+[data-theme="dark"] .api-key-input::placeholder {
+  color: #8576a0;
+}
+
+.edit-button {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.edit-button:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* Light mode edit button */
+[data-theme="light"] .edit-button {
+  background: rgba(248, 122, 20, 0.1);
+  color: #f87a14;
+  border-color: rgba(248, 122, 20, 0.2);
+}
+
+[data-theme="light"] .edit-button:hover {
+  background: rgba(248, 122, 20, 0.2);
+}
+
+/* Dark mode edit button */
+[data-theme="dark"] .edit-button {
+  background: rgba(111, 92, 153, 0.2);
+  color: #b8b0c8;
+  border-color: rgba(111, 92, 153, 0.3);
+}
+
+[data-theme="dark"] .edit-button:hover {
+  background: rgba(111, 92, 153, 0.3);
+}
+
+.input-helper-text {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* Save Button */
+.save-button {
+  width: 100%;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, var(--accent-color-1), var(--accent-color-2));
+  border: none;
+  border-radius: 0.75rem;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.save-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.save-button:active {
+  transform: translateY(0);
+}
+
+.save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Light mode save button */
+[data-theme="light"] .save-button {
+  background: linear-gradient(135deg, #f87a14, #ff9f4d);
+}
+
+/* Dark mode save button */
+[data-theme="dark"] .save-button {
+  background: linear-gradient(135deg, #6f5c99, #9b86bd);
+}
+
+/* Status Message */
+.status-message {
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.5rem;
+}
+
+.status-message.error {
+  color: #ef4444;
+}
+
+.status-message.success {
+  color: #10b981;
+}
+
+/* Light mode status colors */
+[data-theme="light"] .status-message.error {
+  color: #dc2626;
+}
+
+[data-theme="light"] .status-message.success {
+  color: #059669;
+}
+
+/* Account Section */
+.account-info-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color);
+}
+
+/* Light mode account info */
+[data-theme="light"] .account-info-container {
+  background: rgba(248, 122, 20, 0.05);
+  border-color: rgba(248, 122, 20, 0.15);
+}
+
+/* Dark mode account info */
+[data-theme="dark"] .account-info-container {
+  background: rgba(111, 92, 153, 0.1);
+  border-color: rgba(111, 92, 153, 0.3);
+}
+
+.account-avatar {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  border: 2px solid var(--accent-color-2);
+}
+
+.account-details {
+  flex: 1;
+}
+
+.account-name {
+  font-weight: 600;
+  font-size: 1.125rem;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.account-email {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* Sign Out Button */
+.signout-button {
+  width: 100%;
+  padding: 1rem 1.5rem;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border: none;
+  border-radius: 0.75rem;
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.signout-button:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
+.signout-button:active {
+  transform: translateY(0);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .settings-container {
+    padding: 1rem;
+  }
+
+  .settings-title {
+    font-size: 1.5rem;
+  }
+
+  .theme-buttons-container {
+    flex-direction: column;
+  }
+
+  .account-info-container {
+    flex-direction: column;
+    text-align: center;
+  }
+}

@@ -20,7 +20,10 @@ export const ThemeProvider = ({ children, userId }) => {
   }, [userId]);
 
   useEffect(() => {
-    // Apply theme to document
+    // Apply theme to document using data-theme attribute
+    document.documentElement.setAttribute('data-theme', theme);
+    
+    // Also add/remove dark class for Tailwind compatibility
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
