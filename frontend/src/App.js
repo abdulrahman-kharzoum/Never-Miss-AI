@@ -66,19 +66,20 @@ function App() {
     */
   }, []);
 
+  // GOOGLE AUTH TEMPORARILY DISABLED - THIS FUNCTION IS NOT USED
   const handleGoogleSignIn = async () => {
+    console.log('🎨 Google Sign-In disabled for UI development');
+    // Original function commented out
+    /*
     setLoading(true);
     setError(null);
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-      
-      // Get Google-specific access and refresh tokens from credential
       const credential = GoogleAuthProvider.credentialFromResult(result);
       const googleAccessToken = credential?.accessToken;
-      const googleRefreshToken = credential?.refreshToken; // Available with access_type: 'offline'
+      const googleRefreshToken = credential?.refreshToken;
       
-      // Debug: Log what we got
       console.log('🔍 Credential:', credential);
       console.log('🔍 Access Token:', googleAccessToken);
       console.log('🔍 Refresh Token:', googleRefreshToken);
@@ -88,16 +89,11 @@ function App() {
         throw new Error('Failed to get Google access token');
       }
       
-      // Calculate token expiration (typically 1 hour)
       const expiresAt = new Date(Date.now() + 3600 * 1000).toISOString();
-      
       console.log('✅ User signed in:', user.email);
       console.log('✅ Got Google OAuth access token');
-      
-      // Store user
       setUser(user);
       
-      // Store tokens in backend (only on new login)
       const tokenData = {
         userId: user.uid,
         email: user.email,
@@ -106,16 +102,7 @@ function App() {
         accessToken: googleAccessToken,
         refreshToken: googleRefreshToken || user.refreshToken || '',
         expiresAt: expiresAt,
-        scopes: [
-          'https://www.googleapis.com/auth/userinfo.profile',
-          'https://www.googleapis.com/auth/userinfo.email',
-          'https://www.googleapis.com/auth/gmail.readonly',
-          'https://www.googleapis.com/auth/gmail.modify',
-          'https://www.googleapis.com/auth/calendar',
-          'https://www.googleapis.com/auth/calendar.events',
-          'https://www.googleapis.com/auth/drive',
-          'https://www.googleapis.com/auth/drive.file'
-        ]
+        scopes: [...]
       };
       
       try {
@@ -125,24 +112,15 @@ function App() {
         console.warn('⚠️ Backend storage failed:', backendError.message);
       }
       
-      // Store in token manager
-      tokenManager.setTokens(
-        googleAccessToken,
-        googleRefreshToken || user.refreshToken || '',
-        user.uid,
-        expiresAt
-      );
-      
-      // Debug: Verify what was stored
+      tokenManager.setTokens(googleAccessToken, googleRefreshToken || user.refreshToken || '', user.uid, expiresAt);
       console.log('✅ Tokens stored in localStorage');
-      console.log('🔍 Stored Access Token:', localStorage.getItem('accessToken'));
-      console.log('🔍 Stored Refresh Token:', localStorage.getItem('refreshToken'));
     } catch (error) {
       console.error('❌ Error signing in:', error);
       setError('Failed to sign in. Please try again.');
     } finally {
       setLoading(false);
     }
+    */
   };
 
   const handleSignOut = async () => {
