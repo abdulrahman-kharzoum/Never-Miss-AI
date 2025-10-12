@@ -477,6 +477,27 @@
   }
 }
 
+/* Light mode breathing glow */
+[data-theme="light"] .ai-message.last-ai-message,
+.light-mode .ai-message.last-ai-message {
+  animation: breathingGlowLight 3s ease-in-out infinite;
+}
+
+@keyframes breathingGlowLight {
+  0%, 100% {
+    box-shadow: 
+      0 4px 12px rgba(248, 122, 20, 0.3),
+      0 0 20px rgba(248, 122, 20, 0.4),
+      0 0 40px rgba(248, 122, 20, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 4px 16px rgba(248, 122, 20, 0.5),
+      0 0 30px rgba(248, 122, 20, 0.6),
+      0 0 60px rgba(255, 159, 77, 0.4);
+  }
+}
+
 /* User Messages */
 .user-message {
   background: var(--accent-color-1);
