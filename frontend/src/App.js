@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from 'firebase/auth';
 import { auth, googleProvider } from './firebase';
 import ChatInterfaceNew from './components/ChatInterfaceNew';
+import PricingTab from './components/PricingTab';
+import AboutTab from './components/AboutTab';
 import { tokenManager } from './utils/tokenManager';
 import { storeUserToken } from './utils/api';
 import { ThemeProvider } from './context/ThemeContext';
