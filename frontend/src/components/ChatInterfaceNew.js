@@ -418,86 +418,127 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
   // Sidebar Component
   function renderSidebar() {
-    const sidebarContent = (
-      <div className="sidebar">
-        <div className="sidebar-header">
-          <div className="app-title">
-            <div className="app-logo">💬</div>
-            NeverMiss
-          </div>
-          
-          {/* Navigation Tabs */}
-          <div className="sidebar-navigation">
-            <button
-              className={`nav-tab ${activeTab === 'chat' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('chat'); setShowSidebar(false); }}
-            >
-              <span className="nav-tab-icon">💬</span>
-              Chat
-            </button>
-            <button
-              className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('dashboard'); setShowSidebar(false); }}
-            >
-              <span className="nav-tab-icon">📊</span>
-              Dashboard
-            </button>
-            <button
-              className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('settings'); setShowSidebar(false); }}
-            >
-              <span className="nav-tab-icon">⚙️</span>
-              Settings
-            </button>
-          </div>
-
-          {/* New Chat Button */}
-          <button onClick={createNewSession} className="new-chat-button">
-            <span className="new-chat-button-icon">+</span>
-            New Chat
-          </button>
-        </div>
-
-        {/* Conversation List */}
-        <div className="conversation-list">
-          {sessions.map((session) => (
-            <div
-              key={session.id}
-              onClick={() => { setCurrentSession(session); setShowSidebar(false); }}
-              className={`conversation-item ${currentSession?.id === session.id ? 'active' : ''}`}
-            >
-              <div className="conversation-title">{session.title}</div>
-              <div className="conversation-meta">
-                <span>{new Date(session.created_at).toLocaleDateString()}</span>
-                <span>{session.message_count || 0} msgs</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-
-    // Desktop: always show sidebar
-    // Mobile: show as drawer
     return (
       <>
-        {/* Desktop Sidebar */}
-        <div className="sidebar" style={{ display: window.innerWidth > 768 ? 'flex' : 'none' }}>
-          {sidebarContent.props.children}
+        {/* Desktop Sidebar - Always visible on desktop */}
+        <div className="sidebar">
+          <div className="sidebar-header">
+            <div className="app-title">
+              <div className="app-logo">💬</div>
+              NeverMiss
+            </div>
+            
+            {/* Navigation Tabs */}
+            <div className="sidebar-navigation">
+              <button
+                className={`nav-tab ${activeTab === 'chat' ? 'active' : ''}`}
+                onClick={() => { setActiveTab('chat'); setShowSidebar(false); }}
+              >
+                <span className="nav-tab-icon">💬</span>
+                Chat
+              </button>
+              <button
+                className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
+                onClick={() => { setActiveTab('dashboard'); setShowSidebar(false); }}
+              >
+                <span className="nav-tab-icon">📊</span>
+                Dashboard
+              </button>
+              <button
+                className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
+                onClick={() => { setActiveTab('settings'); setShowSidebar(false); }}
+              >
+                <span className="nav-tab-icon">⚙️</span>
+                Settings
+              </button>
+            </div>
+
+            {/* New Chat Button */}
+            <button onClick={createNewSession} className="new-chat-button">
+              <span className="new-chat-button-icon">+</span>
+              New Chat
+            </button>
+          </div>
+
+          {/* Conversation List */}
+          <div className="conversation-list">
+            {sessions.map((session) => (
+              <div
+                key={session.id}
+                onClick={() => { setCurrentSession(session); setShowSidebar(false); }}
+                className={`conversation-item ${currentSession?.id === session.id ? 'active' : ''}`}
+              >
+                <div className="conversation-title">{session.title}</div>
+                <div className="conversation-meta">
+                  <span>{new Date(session.created_at).toLocaleDateString()}</span>
+                  <span>{session.message_count || 0} msgs</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Mobile Drawer */}
-        {window.innerWidth <= 768 && (
-          <>
-            <div
-              className={`sidebar-backdrop ${showSidebar ? 'visible' : ''}`}
-              onClick={() => setShowSidebar(false)}
-            />
-            <div className={`sidebar-drawer ${showSidebar ? 'open' : ''}`}>
-              {sidebarContent.props.children}
+        {/* Mobile Drawer Overlay */}
+        <div
+          className={`sidebar-backdrop ${showSidebar ? 'visible' : ''}`}
+          onClick={() => setShowSidebar(false)}
+        />
+        <div className={`sidebar-drawer ${showSidebar ? 'open' : ''}`}>
+          <div className="sidebar-header">
+            <div className="app-title">
+              <div className="app-logo">💬</div>
+              NeverMiss
             </div>
-          </>
-        )}
+            
+            {/* Navigation Tabs */}
+            <div className="sidebar-navigation">
+              <button
+                className={`nav-tab ${activeTab === 'chat' ? 'active' : ''}`}
+                onClick={() => { setActiveTab('chat'); setShowSidebar(false); }}
+              >
+                <span className="nav-tab-icon">💬</span>
+                Chat
+              </button>
+              <button
+                className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
+                onClick={() => { setActiveTab('dashboard'); setShowSidebar(false); }}
+              >
+                <span className="nav-tab-icon">📊</span>
+                Dashboard
+              </button>
+              <button
+                className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
+                onClick={() => { setActiveTab('settings'); setShowSidebar(false); }}
+              >
+                <span className="nav-tab-icon">⚙️</span>
+                Settings
+              </button>
+            </div>
+
+            {/* New Chat Button */}
+            <button onClick={createNewSession} className="new-chat-button">
+              <span className="new-chat-button-icon">+</span>
+              New Chat
+            </button>
+          </div>
+
+          {/* Conversation List */}
+          <div className="conversation-list">
+            {sessions.map((session) => (
+              <div
+                key={session.id}
+                onClick={() => { setCurrentSession(session); setShowSidebar(false); }}
+                className={`conversation-item ${currentSession?.id === session.id ? 'active' : ''}`}
+              >
+                <div className="conversation-title">{session.title}</div>
+                <div className="conversation-meta">
+                  <span>{new Date(session.created_at).toLocaleDateString()}</span>
+                  <span>{session.message_count || 0} msgs</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </>
     );
   }
