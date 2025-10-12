@@ -21,6 +21,11 @@ const ChatInterface = ({ user, onSignOut }) => {
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
+  // Resolve user identification fields commonly used by Firebase and other providers
+  const resolvedUserName = user?.displayName || user?.name || (user?.email ? user.email.split('@')[0] : '');
+  const resolvedUserEmail = user?.email || '';
+  const resolvedUserId = user?.uid || '';
+
   useEffect(() => {
     loadSessions();
   }, [user]);
@@ -144,8 +149,9 @@ const ChatInterface = ({ user, onSignOut }) => {
         userMessage,
         accessToken,
         refreshToken,
-        user?.name || '',
-        user?.email || ''
+        resolvedUserName,
+        resolvedUserEmail,
+        resolvedUserId
       );
       
       // Parse N8N response - it returns an array with output field
@@ -263,8 +269,9 @@ const ChatInterface = ({ user, onSignOut }) => {
           base64AudioForN8N, // Send only the base64 part
           accessToken,
           refreshToken,
-          user?.name || '',
-          user?.email || ''
+          resolvedUserName,
+          resolvedUserEmail,
+          resolvedUserId
         );
         
         let aiResponseContent;

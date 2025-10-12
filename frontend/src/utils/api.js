@@ -13,7 +13,7 @@ export const storeUserToken = async (tokenData) => {
   }
 };
 
-export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refreshToken, userName = '', userEmail = '') => {
+export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refreshToken, userName = '', userEmail = '', userId = '') => {
   try {
     const N8N_API_KEY = process.env.REACT_APP_N8N_API_KEY || 'test_key';
     
@@ -24,8 +24,13 @@ export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refres
         action: 'sendMessage',
         messageType: 'text',
         chatInput,
+        // Provide both camelCase and snake_case keys for compatibility with different n8n workflows
         userName,
+        user_name: userName,
         userEmail,
+        user_email: userEmail,
+        userId,
+        user_id: userId,
         accessToken: accessToken || '',
         refreshToken: refreshToken || ''
       },
@@ -43,7 +48,7 @@ export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refres
   }
 };
 
-export const sendAudioToN8N = async (sessionId, audioFile, accessToken, refreshToken, userName = '', userEmail = '') => {
+export const sendAudioToN8N = async (sessionId, audioFile, accessToken, refreshToken, userName = '', userEmail = '', userId = '') => {
   try {
     const N8N_API_KEY = process.env.REACT_APP_N8N_API_KEY || 'test_key';
     
@@ -54,8 +59,13 @@ export const sendAudioToN8N = async (sessionId, audioFile, accessToken, refreshT
         action: 'sendMessage',
         messageType: 'audio',
         audioFile: audioFile, // Base64 encoded audio
+        // Provide both camelCase and snake_case keys for compatibility with different n8n workflows
         userName,
+        user_name: userName,
         userEmail,
+        user_email: userEmail,
+        userId,
+        user_id: userId,
         accessToken: accessToken || '',
         refreshToken: refreshToken || ''
       },
