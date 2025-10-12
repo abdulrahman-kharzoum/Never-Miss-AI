@@ -124,6 +124,13 @@ function App() {
   };
 
   const handleSignOut = async () => {
+    // GOOGLE AUTH TEMPORARILY DISABLED
+    console.log('🎨 Sign out disabled for UI development - Reloading page instead');
+    // Just reload the page to reset
+    window.location.reload();
+    
+    // Original function commented out:
+    /*
     try {
       await signOut(auth);
       setUser(null);
@@ -132,6 +139,7 @@ function App() {
     } catch (error) {
       console.error('❌ Error signing out:', error);
     }
+    */
   };
 
   if (loading) {
