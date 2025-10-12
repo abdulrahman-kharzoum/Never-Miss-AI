@@ -3,15 +3,16 @@
    ======================================== */
 
 /* CSS Variables - Dark Mode (Default) */
-:root {
+:root, [data-theme="dark"] {
   --primary-bg: #1a1625;
   --secondary-bg: #2d2438;
   --accent-color-1: #3a2766;
   --accent-color-2: #6f5c99;
+  --accent-color-3: #9b86bd;
   --accent-purple-1: #3a2766;
   --accent-purple-2: #6f5c99;
   --accent-purple-3: #9b86bd;
-  --sidebar-bg: #3a2766;
+  --sidebar-bg: #2d2438;
   --message-bg: #6f5c99;
   
   --user-glow: #00d4ff;
@@ -29,15 +30,16 @@
   --font-code: 'Fira Code', 'Courier New', monospace;
 }
 
-/* Light Mode Variables - Orange/Cream Theme */
+/* Light Mode Variables - Warm/Clean Theme */
 [data-theme="light"], .light-mode {
   --primary-bg: #fdefde;
   --secondary-bg: #ffffff;
   --accent-color-1: #f87a14;
   --accent-color-2: #f87a14;
+  --accent-color-3: #ff9f4d;
   --accent-purple-1: #f87a14;
   --accent-purple-2: #f87a14;
-  --accent-purple-3: #f87a14;
+  --accent-purple-3: #ff9f4d;
   --sidebar-bg: #ffffff;
   --message-bg-ai: #ffffff;
   --message-bg-user: #fdefde;
@@ -50,9 +52,9 @@
   
   --text-primary: #11192b;
   --text-secondary: #11192b;
-  --text-muted: #11192b;
+  --text-muted: #4a5568;
   
-  --border-color: rgba(248, 122, 20, 0.2);
+  --border-color: rgba(248, 122, 20, 0.15);
 }
 
 /* ========================================
