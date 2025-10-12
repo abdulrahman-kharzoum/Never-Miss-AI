@@ -56,3 +56,4 @@ dist/
 .cache/
 .tmp/
 temp/
+backend/.env
