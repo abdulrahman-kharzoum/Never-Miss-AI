@@ -621,9 +621,18 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
                   I can help you manage emails, calendar events, and tasks.
                 </div>
                 <div className="empty-state-suggestions">
-                  <div className="suggestion-item">💬 "Show me unread emails from today"</div>
-                  <div className="suggestion-item">📅 "Schedule a meeting tomorrow at 2 PM"</div>
-                  <div className="suggestion-item">✅ "Create a task to review the report"</div>
+                  <div className="suggestion-item" onClick={() => setInputMessage('Show me unread emails from today')}>
+                    💬 "Show me unread emails from today"
+                  </div>
+                  <div className="suggestion-item" onClick={() => setInputMessage('Schedule a meeting tomorrow at 2 PM')}>
+                    📅 "Schedule a meeting tomorrow at 2 PM"
+                  </div>
+                  <div className="suggestion-item" onClick={() => setInputMessage('Create a task to review the report')}>
+                    ✅ "Create a task to review the report"
+                  </div>
+                  <div className="suggestion-item" onClick={() => setInputMessage('Get a summary of my last meeting')}>
+                    📝 "Get a summary of my last meeting"
+                  </div>
                 </div>
               </div>
             </div>
