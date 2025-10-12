@@ -379,13 +379,14 @@
 
 /* AI Messages */
 .ai-message {
-  background: linear-gradient(135deg, var(--accent-purple-1), var(--accent-purple-2));
+  background: var(--message-bg);
   border-radius: 18px 18px 18px 4px;
   padding: 14px 18px;
   max-width: 75%;
   box-shadow: 0 4px 12px rgba(168, 85, 247, 0.15);
   position: relative;
   color: var(--text-primary);
+  border: 1px solid var(--border-color);
 }
 
 /* CRITICAL: Only last AI message has breathing glow */
