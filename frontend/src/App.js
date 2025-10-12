@@ -13,6 +13,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [landingTab, setLandingTab] = useState('home');
 
   useEffect(() => {
     // Load tokens from localStorage
