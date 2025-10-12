@@ -561,6 +561,20 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
                 <span className="nav-tab-icon">⚙️</span>
                 Settings
               </button>
+              <button
+                className={`nav-tab ${activeTab === 'pricing' ? 'active' : ''}`}
+                onClick={() => { setActiveTab('pricing'); setShowSidebar(false); }}
+              >
+                <span className="nav-tab-icon">💳</span>
+                Pricing
+              </button>
+              <button
+                className={`nav-tab ${activeTab === 'about' ? 'active' : ''}`}
+                onClick={() => { setActiveTab('about'); setShowSidebar(false); }}
+              >
+                <span className="nav-tab-icon">ℹ️</span>
+                About
+              </button>
             </div>
 
             {/* New Chat Button */}
