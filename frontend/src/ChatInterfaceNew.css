@@ -164,7 +164,7 @@
 }
 
 .nav-tab.active {
-  background: linear-gradient(135deg, var(--accent-purple-1), var(--accent-purple-2));
+  background: var(--message-bg);
   box-shadow: 0 2px 8px rgba(111, 92, 153, 0.3);
   color: var(--text-primary);
 }
@@ -177,7 +177,7 @@
   transform: translateY(-50%);
   width: 3px;
   height: 60%;
-  background: var(--ai-glow);
+  background: var(--ai-message-glow);
   border-radius: 0 2px 2px 0;
 }
 
