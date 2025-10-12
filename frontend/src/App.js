@@ -1,40 +1,21 @@
 import React, { useState, useEffect } from 'react';
-// TEMPORARILY DISABLED FOR UI DEVELOPMENT
-// import { signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from 'firebase/auth';
-// import { auth, googleProvider } from './firebase';
+import { signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider } from 'firebase/auth';
+import { auth, googleProvider } from './firebase';
 import ChatInterfaceNew from './components/ChatInterfaceNew';
-// import { tokenManager } from './utils/tokenManager';
-// import { storeUserToken } from './utils/api';
+import { tokenManager } from './utils/tokenManager';
+import { storeUserToken } from './utils/api';
 import { ThemeProvider } from './context/ThemeContext';
 import './App.css';
 
 function App() {
-  // MOCK USER FOR UI DEVELOPMENT - Google Auth Temporarily Disabled
-  const mockUser = {
-    uid: 'mock-user-id-12345',
-    email: 'developer@example.com',
-    displayName: 'UI Developer',
-    photoURL: 'https://via.placeholder.com/150'
-  };
-  
-  const [user, setUser] = useState(mockUser); // Set to mock user by default
-  const [loading, setLoading] = useState(false); // No loading needed
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // GOOGLE AUTH TEMPORARILY DISABLED - USING MOCK USER FOR UI DEVELOPMENT
     // Load tokens from localStorage
-    // tokenManager.loadTokens();
+    tokenManager.loadTokens();
 
-    console.log('🎨 UI Development Mode - Google Auth Disabled');
-    console.log('👤 Using mock user:', mockUser);
-    
-    // No authentication needed - directly set user
-    setUser(mockUser);
-    setLoading(false);
-
-    // Original authentication code commented out:
-    /*
     const loadingTimeout = setTimeout(() => {
       console.log('⏱️ Loading timeout - Firebase auth check complete');
       setLoading(false);
@@ -63,14 +44,9 @@ function App() {
       unsubscribe();
       clearTimeout(loadingTimeout);
     };
-    */
   }, []);
 
-  // GOOGLE AUTH TEMPORARILY DISABLED - THIS FUNCTION IS NOT USED
   const handleGoogleSignIn = async () => {
-    console.log('🎨 Google Sign-In disabled for UI development');
-    // Original function commented out
-    /*
     setLoading(true);
     setError(null);
     try {
@@ -102,7 +78,16 @@ function App() {
         accessToken: googleAccessToken,
         refreshToken: googleRefreshToken || user.refreshToken || '',
         expiresAt: expiresAt,
-        scopes: [...]
+        scopes: [
+          'https://www.googleapis.com/auth/userinfo.profile',
+          'https://www.googleapis.com/auth/userinfo.email',
+          'https://www.googleapis.com/auth/gmail.readonly',
+          'https://www.googleapis.com/auth/gmail.modify',
+          'https://www.googleapis.com/auth/calendar',
+          'https://www.googleapis.com/auth/calendar.events',
+          'https://www.googleapis.com/auth/drive',
+          'https://www.googleapis.com/auth/drive.file'
+        ]
       };
       
       try {
@@ -120,17 +105,9 @@ function App() {
     } finally {
       setLoading(false);
     }
-    */
   };
 
   const handleSignOut = async () => {
-    // GOOGLE AUTH TEMPORARILY DISABLED
-    console.log('🎨 Sign out disabled for UI development - Reloading page instead');
-    // Just reload the page to reset
-    window.location.reload();
-    
-    // Original function commented out:
-    /*
     try {
       await signOut(auth);
       setUser(null);
@@ -139,13 +116,8 @@ function App() {
     } catch (error) {
       console.error('❌ Error signing out:', error);
     }
-    */
   };
 
-  // GOOGLE AUTH TEMPORARILY DISABLED - SKIP LOGIN SCREEN
-  // Loading and login screens are commented out for UI development
-  
-  /*
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 animate-gradient">
@@ -213,7 +185,6 @@ function App() {
       </div>
     );
   }
-  */
 
   return (
     <ThemeProvider userId={user?.uid}>
