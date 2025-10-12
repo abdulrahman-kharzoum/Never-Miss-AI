@@ -641,6 +641,20 @@
   padding: 8px 12px;
 }
 
+/* Light mode input inner - lighter background */
+[data-theme="light"] .message-input-inner,
+.light-mode .message-input-inner {
+  background: rgba(248, 122, 20, 0.05);
+  border: 1px solid rgba(248, 122, 20, 0.2);
+}
+
+/* Dark mode input inner */
+[data-theme="dark"] .message-input-inner,
+:root .message-input-inner {
+  background: var(--secondary-bg);
+  border: 1px solid rgba(111, 92, 153, 0.3);
+}
+
 .message-input {
   background: transparent;
   border: none;
@@ -656,6 +670,18 @@
 }
 
 .message-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* Light mode input placeholder */
+[data-theme="light"] .message-input::placeholder,
+.light-mode .message-input::placeholder {
+  color: rgba(17, 25, 43, 0.5);
+}
+
+/* Dark mode input placeholder */
+[data-theme="dark"] .message-input::placeholder,
+:root .message-input::placeholder {
   color: var(--text-muted);
 }
 
