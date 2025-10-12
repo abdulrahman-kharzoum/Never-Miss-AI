@@ -120,7 +120,7 @@ function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 animate-gradient">
+      <div className="min-h-screen flex items-center justify-center animate-gradient" style={{background: 'linear-gradient(135deg, #3a2766 0%, #6f5c99 50%, #00d4ff 100%)'}}>
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-white mb-4"></div>
           <div className="text-white text-xl font-semibold mb-4">Loading NeverMiss...</div>
@@ -136,7 +136,7 @@ function App() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 animate-gradient p-4">
+      <div className="min-h-screen flex items-center justify-center animate-gradient p-4" style={{background: 'linear-gradient(135deg, #3a2766 0%, #6f5c99 50%, #00d4ff 100%)'}}>
         <div className="max-w-md w-full">
           <div className="text-center mb-8 animate-fade-in">
             <div className="inline-block p-4 bg-white/20 backdrop-blur-lg rounded-full mb-4 animate-bounce-slow">
