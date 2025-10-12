@@ -479,13 +479,28 @@
 
 /* User Messages */
 .user-message {
-  background: linear-gradient(135deg, #0ea5e9, #00d4ff);
+  background: var(--accent-color-1);
   border-radius: 18px 18px 4px 18px;
   padding: 14px 18px;
   max-width: 75%;
   margin-left: auto;
   box-shadow: 0 4px 12px rgba(0, 212, 255, 0.15);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+}
+
+/* Dark mode user messages */
+[data-theme="dark"] .user-message,
+:root .user-message {
+  background: linear-gradient(135deg, #0ea5e9, #00d4ff);
   color: white;
+}
+
+/* Light mode user messages */
+[data-theme="light"] .user-message,
+.light-mode .user-message {
+  background: var(--message-bg-user);
+  color: var(--text-primary);
 }
 
 .message-text {
