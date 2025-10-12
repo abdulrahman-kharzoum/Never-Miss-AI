@@ -568,7 +568,7 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-/* Animated glowing border */
+/* Animated glowing border - Dark mode */
 .message-input-container::before {
   content: '';
   position: absolute;
@@ -577,11 +577,11 @@
   padding: 2px;
   background: linear-gradient(
     90deg,
-    var(--ai-glow),
-    var(--user-glow),
-    var(--accent-purple-2),
-    var(--user-glow),
-    var(--ai-glow)
+    #a855f7,
+    #00d4ff,
+    #6f5c99,
+    #00d4ff,
+    #a855f7
   );
   background-size: 300% 100%;
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -589,6 +589,19 @@
   mask-composite: exclude;
   animation: glowingBorder 4s linear infinite;
   opacity: 0.8;
+}
+
+/* Light mode glowing border */
+[data-theme="light"] .message-input-container::before,
+.light-mode .message-input-container::before {
+  background: linear-gradient(
+    90deg,
+    #f87a14,
+    #ff9f4d,
+    #f87a14,
+    #ff9f4d,
+    #f87a14
+  );
 }
 
 @keyframes glowingBorder {
