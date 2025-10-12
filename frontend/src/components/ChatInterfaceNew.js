@@ -7,6 +7,8 @@ import AudioPlayer from './AudioPlayer';
 import MarkdownRenderer from './MarkdownRenderer';
 import DashboardTab from './DashboardTab';
 import SettingsTab from './SettingsTab';
+import PricingTab from './PricingTab';
+import AboutTab from './AboutTab';
 import '../ChatInterfaceNew.css';
 
 const ChatInterfaceNew = ({ user, onSignOut }) => {
