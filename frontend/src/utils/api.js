@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const N8N_WEBHOOK_URL = 'https://n8n.zentraid.com/webhook/ConnectAI_KH_message';
+const N8N_WEBHOOK_URL = 'https://n8n.zentraid.com/webhook/ConnectAI_KH_message1';
 
 export const storeUserToken = async (tokenData) => {
   try {
@@ -13,7 +13,7 @@ export const storeUserToken = async (tokenData) => {
   }
 };
 
-export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refreshToken, userName = '', userEmail = '', userId = '') => {
+export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refreshToken, userName = '', userEmail = '', userId = '', aiTimestamp = '') => {
   try {
     const N8N_API_KEY = process.env.REACT_APP_N8N_API_KEY || 'test_key';
     
@@ -32,7 +32,8 @@ export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refres
         userId,
         user_id: userId,
         accessToken: accessToken || '',
-        refreshToken: refreshToken || ''
+        refreshToken: refreshToken || '',
+        aiTimestamp: aiTimestamp // Add the AI timestamp to the payload
       },
       {
         headers: {
@@ -48,7 +49,7 @@ export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refres
   }
 };
 
-export const sendAudioToN8N = async (sessionId, audioFile, accessToken, refreshToken, userName = '', userEmail = '', userId = '') => {
+export const sendAudioToN8N = async (sessionId, audioFile, accessToken, refreshToken, userName = '', userEmail = '', userId = '', aiTimestamp = '') => {
   try {
     const N8N_API_KEY = process.env.REACT_APP_N8N_API_KEY || 'test_key';
     
@@ -67,7 +68,8 @@ export const sendAudioToN8N = async (sessionId, audioFile, accessToken, refreshT
         userId,
         user_id: userId,
         accessToken: accessToken || '',
-        refreshToken: refreshToken || ''
+        refreshToken: refreshToken || '',
+        aiTimestamp: aiTimestamp // Add the AI timestamp to the payload
       },
       {
         headers: {

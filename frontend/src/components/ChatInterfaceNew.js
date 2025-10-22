@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { sendMessageToN8N, sendAudioToN8N } from '../utils/api';
 import { tokenManager } from '../utils/tokenManager';
@@ -28,25 +28,35 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
   const resolvedUserEmail = user?.email || '';
   const resolvedUserId = user?.uid || '';
 
-  useEffect(() => {
-    loadSessions();
+  const createNewSession = useCallback(async () => {
+    try {
+      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      const { data, error } = await supabase
+        .from('chat_sessions')
+        .insert({
+          user_id: user.uid,
+          session_id: sessionId,
+          title: 'New Conversation',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          message_count: 0
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setSessions((prevSessions) => [data, ...prevSessions]);
+      setCurrentSession(data);
+      setMessages([]);
+      setShowSidebar(false); // Close mobile drawer after creating
+    } catch (error) {
+      console.error('Error creating session:', error);
+    }
   }, [user]);
 
-  useEffect(() => {
-    if (currentSession) {
-      loadMessages(currentSession.session_id);
-    }
-  }, [currentSession]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const loadSessions = async () => {
+  const loadSessions = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('chat_sessions')
@@ -66,34 +76,84 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
     } catch (error) {
       console.error('Error loading sessions:', error);
     }
-  };
+  }, [user, createNewSession]);
 
-  const createNewSession = async () => {
-    try {
-      const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      const { data, error } = await supabase
-        .from('chat_sessions')
-        .insert({
-          user_id: user.uid,
-          session_id: sessionId,
-          title: 'New Conversation',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          message_count: 0
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setSessions([data, ...sessions]);
-      setCurrentSession(data);
-      setMessages([]);
-      setShowSidebar(false); // Close mobile drawer after creating
-    } catch (error) {
-      console.error('Error creating session:', error);
+  useEffect(() => {
+    if (user) {
+      loadSessions();
     }
+  }, [user, loadSessions]);
+
+  // Effect for loading messages when the session changes
+  useEffect(() => {
+    if (currentSession) {
+      loadMessages(currentSession.session_id);
+    }
+  }, [currentSession]);
+
+  // Effect for setting up the real-time subscription
+  useEffect(() => {
+    // Only run if we have a session ID
+    if (!currentSession?.session_id) {
+      return;
+    }
+
+    const sessionId = currentSession.session_id;
+    console.log(`Setting up real-time subscription for session: ${sessionId}`);
+
+    const channel = supabase.channel(`chat-messages-${sessionId}`);
+
+    const subscription = channel
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `session_id=eq.${sessionId}`,
+        },
+        (payload) => {
+          console.log('Real-time message received:', payload.new);
+
+          // We only care about messages from the AI, as we handle user messages optimistically
+          if (payload.new.sender === 'ai') {
+            setMessages((prevMessages) => {
+              // Check if the message is already in the state to prevent duplicates
+              if (prevMessages.some(msg => msg.id === payload.new.id)) {
+                return prevMessages;
+              }
+              return [...prevMessages, payload.new];
+            });
+            // Hide the loading indicator
+            setSending(false);
+          }
+        }
+      )
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`Successfully subscribed to channel: ${channel.topic}`);
+        }
+        if (status === 'CHANNEL_ERROR') {
+          console.error('Subscription error:', err);
+        }
+        if (status === 'TIMED_OUT') {
+          console.warn('Subscription timed out.');
+        }
+      });
+
+    // Cleanup function to remove the subscription when the component unmounts or session changes
+    return () => {
+      console.log(`Cleaning up subscription for session: ${sessionId}`);
+      supabase.removeChannel(channel);
+    };
+  }, [currentSession?.session_id]); // Depend only on the stable session ID
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const loadMessages = async (sessionId) => {
@@ -119,60 +179,61 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
     const userMessage = inputMessage.trim();
     setInputMessage('');
-    setSending(true);
+    setSending(true); // Show loading indicator
+
+    const messageObject = {
+      session_id: currentSession.session_id,
+      user_id: user.uid,
+      message_type: 'text',
+      content: userMessage,
+      sender: 'user',
+      timestamp: new Date().toISOString(),
+      // Use a temporary client-side ID for the key, which will be replaced by the real ID on reload
+      id: `temp_${Date.now()}` 
+    };
+
+    // Optimistic UI update: show the user's message immediately
+    setMessages((prevMessages) => [...prevMessages, messageObject]);
 
     try {
+      // Now, save the actual message to Supabase in the background
       const { error: userMsgError } = await supabase
         .from('chat_messages')
         .insert({
-          session_id: currentSession.session_id,
-          user_id: user.uid,
-          message_type: 'text',
-          content: userMessage,
-          sender: 'user',
-          timestamp: new Date().toISOString()
+          session_id: messageObject.session_id,
+          user_id: messageObject.user_id,
+          message_type: messageObject.message_type,
+          content: messageObject.content,
+          sender: messageObject.sender,
+          timestamp: messageObject.timestamp,
         });
 
-      if (userMsgError) throw userMsgError;
-      await loadMessages(currentSession.session_id);
+      if (userMsgError) {
+        // If saving fails, you might want to mark the message as "failed to send"
+        console.error(userMsgError);
+        throw userMsgError;
+      }
 
       const accessToken = tokenManager.getAccessToken();
       const refreshToken = localStorage.getItem('refreshToken');
       
-      const n8nResponse = await sendMessageToN8N(
+      // Generate a timestamp for the AI's eventual response
+      const aiTimestamp = new Date().toISOString();
+
+      // Asynchronously send to n8n
+      sendMessageToN8N(
         currentSession.session_id,
         userMessage,
         accessToken,
         refreshToken,
         resolvedUserName,
         resolvedUserEmail,
-        resolvedUserId
+        resolvedUserId,
+        aiTimestamp // Pass the timestamp to the API call
       );
-      
-      let aiResponse = 'I received your message!';
-      if (n8nResponse) {
-        if (Array.isArray(n8nResponse) && n8nResponse.length > 0 && n8nResponse[0].output) {
-          aiResponse = n8nResponse[0].output;
-        } else if (n8nResponse.output) {
-          aiResponse = n8nResponse.output;
-        }
-      }
 
-      const { error: aiMsgError } = await supabase
-        .from('chat_messages')
-        .insert({
-          session_id: currentSession.session_id,
-          user_id: user.uid,
-          message_type: 'text',
-          content: aiResponse,
-          sender: 'ai',
-          timestamp: new Date().toISOString()
-        });
-
-      if (aiMsgError) throw aiMsgError;
-      await loadMessages(currentSession.session_id);
-
-      if (currentSession.title === 'New Conversation' && messages.length === 0) {
+      // Update session metadata
+      if (currentSession.title === 'New Conversation' && messages.length === 1) {
         const conversationTitle = userMessage.length > 50 
           ? userMessage.substring(0, 50) + '...' 
           : userMessage;
@@ -182,7 +243,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
           .update({ 
             title: conversationTitle,
             updated_at: new Date().toISOString(),
-            message_count: 2
+            message_count: 2 // User and eventual AI message
           })
           .eq('session_id', currentSession.session_id);
         
@@ -192,7 +253,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
           .from('chat_sessions')
           .update({
             updated_at: new Date().toISOString(),
-            message_count: messages.length + 2
+            message_count: messages.length + 1
           })
           .eq('session_id', currentSession.session_id);
       }
@@ -200,8 +261,8 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
     } catch (error) {
       console.error('Error sending message:', error);
       alert('Failed to send message. Please try again.');
+      setSending(false); // Stop loading on error
     } finally {
-      setSending(false);
       if (textareaRef.current) {
         textareaRef.current.focus();
       }
@@ -218,156 +279,74 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
   const handleVoiceRecording = async (audioBlob) => {
     if (!currentSession) return;
     
-    setSending(true);
-    try {
-      const reader = new FileReader();
-      reader.readAsDataURL(audioBlob);
-      reader.onloadend = async () => {
-        const base64AudioDataUrl = reader.result;
-        
+    setSending(true); // Start loading indicator
+    
+    const reader = new FileReader();
+    reader.readAsDataURL(audioBlob);
+    reader.onloadend = async () => {
+      const base64AudioDataUrl = reader.result;
+
+      const messageObject = {
+        session_id: currentSession.session_id,
+        user_id: user.uid,
+        message_type: 'audio',
+        content: base64AudioDataUrl,
+        sender: 'user',
+        timestamp: new Date().toISOString(),
+        id: `temp_${Date.now()}`
+      };
+
+      // Optimistic UI update
+      setMessages((prevMessages) => [...prevMessages, messageObject]);
+
+      try {
+        // Save to Supabase in the background
         const { error: userMsgError } = await supabase
           .from('chat_messages')
           .insert({
-            session_id: currentSession.session_id,
-            user_id: user.uid,
-            message_type: 'audio',
-            content: base64AudioDataUrl,
-            sender: 'user',
-            timestamp: new Date().toISOString()
+            session_id: messageObject.session_id,
+            user_id: messageObject.user_id,
+            message_type: messageObject.message_type,
+            content: messageObject.content,
+            sender: messageObject.sender,
+            timestamp: messageObject.timestamp,
           });
 
         if (userMsgError) throw userMsgError;
-        await loadMessages(currentSession.session_id);
 
         const accessToken = tokenManager.getAccessToken();
         const refreshToken = localStorage.getItem('refreshToken');
         const base64AudioForN8N = base64AudioDataUrl.split(',')[1];
 
-        const n8nResponseText = await sendAudioToN8N(
+        // Generate a timestamp for the AI's eventual response
+        const aiTimestamp = new Date().toISOString();
+
+        // Asynchronously send to n8n
+        sendAudioToN8N(
           currentSession.session_id,
           base64AudioForN8N,
           accessToken,
           refreshToken,
           resolvedUserName,
           resolvedUserEmail,
-          resolvedUserId
+          resolvedUserId,
+          aiTimestamp // Pass the timestamp to the API call
         );
         
-        let aiResponseContent;
-        let messageType = 'text';
-        let isAiAudio = false;
-
-        // Handle response parsing (keeping original logic)
-        const raw = typeof n8nResponseText === 'string' ? n8nResponseText.trim() : '';
-        let parsed = null;
-        try {
-          parsed = JSON.parse(raw);
-        } catch (e) {
-          // Not JSON
-        }
-
-        if (typeof parsed === 'string') {
-          try {
-            const double = JSON.parse(parsed);
-            parsed = double;
-          } catch (e) {
-            // Still string
-          }
-        }
-
-        const trySetAudioFromBase64 = (b64) => {
-          if (!b64) return false;
-          if (String(b64).startsWith('data:audio')) {
-            aiResponseContent = String(b64);
-            return true;
-          }
-          let cleaned = String(b64).replace(/^"|"$/g, '').trim();
-          cleaned = cleaned.replace(/\s+/g, '');
-          if (cleaned.indexOf(' ') !== -1) cleaned = cleaned.replace(/ /g, '+');
-          const prefix = cleaned.slice(0, 40);
-          if (/^[A-Za-z0-9+/=]+$/.test(prefix)) {
-            aiResponseContent = `data:audio/mpeg;base64,${cleaned}`;
-            return true;
-          }
-          return false;
-        };
-
-        if (parsed) {
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const first = parsed[0];
-            if (first && typeof first === 'object') {
-              if (first.data && trySetAudioFromBase64(first.data)) {
-                messageType = 'audio';
-                isAiAudio = true;
-              } else if (first.output && typeof first.output === 'string') {
-                aiResponseContent = first.output;
-                messageType = 'text';
-              }
-            } else if (typeof first === 'string') {
-              if (trySetAudioFromBase64(first)) {
-                messageType = 'audio';
-                isAiAudio = true;
-              } else {
-                aiResponseContent = first;
-                messageType = 'text';
-              }
-            }
-          } else if (typeof parsed === 'object') {
-            if (parsed.data && trySetAudioFromBase64(parsed.data)) {
-              messageType = 'audio';
-              isAiAudio = true;
-            } else if (parsed.output && typeof parsed.output === 'string') {
-              aiResponseContent = parsed.output;
-              messageType = 'text';
-            }
-          }
-        }
-
-        if (!isAiAudio && raw) {
-          const rawUnquoted = raw.replace(/^"|"$/g, '').trim();
-          if (rawUnquoted.startsWith('data:audio')) {
-            aiResponseContent = rawUnquoted;
-            messageType = 'audio';
-            isAiAudio = true;
-          } else if (trySetAudioFromBase64(rawUnquoted)) {
-            messageType = 'audio';
-            isAiAudio = true;
-          }
-        }
-
-        if (!isAiAudio && !aiResponseContent) {
-          aiResponseContent = 'Audio received, but the response was not in the expected format.';
-        }
-
-        const { error: aiMsgError } = await supabase
-          .from('chat_messages')
-          .insert({
-            session_id: currentSession.session_id,
-            user_id: user.uid,
-            message_type: messageType,
-            content: aiResponseContent,
-            sender: 'ai',
-            timestamp: new Date().toISOString(),
-            metadata: { autoplay: isAiAudio }
-          });
-
-        if (aiMsgError) throw aiMsgError;
-        await loadMessages(currentSession.session_id);
-
         await supabase
           .from('chat_sessions')
           .update({
             updated_at: new Date().toISOString(),
-            message_count: messages.length + 2
+            message_count: messages.length + 1
           })
           .eq('session_id', currentSession.session_id);
-      };
-    } catch (error) {
-      console.error('Error sending audio:', error);
-      alert('Failed to send audio message.');
-    } finally {
-      setSending(false);
-    }
+
+      } catch (error) {
+        console.error('Error sending audio:', error);
+        alert('Failed to send audio message.');
+        setSending(false); // Stop loading on error
+      }
+    };
   };
 
   // Handle delete session
@@ -446,160 +425,111 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
     );
   }
 
-  // Sidebar Component
+  // Unified, Responsive Sidebar Component
   function renderSidebar() {
-    return (
+    const sidebarContent = (
       <>
-        {/* Desktop Sidebar - Always visible on desktop */}
-        <div className="sidebar">
-          <div className="sidebar-header">
-            <div className="app-title">
-              <div className="app-logo">
-                <img src="https://customer-assets.emergentagent.com/job_webauth-helper/artifacts/ksik3suf_nevermiss_logo-removebg-preview.png" alt="NeverMiss Logo" />
-              </div>
-              NeverMiss
+        <div className="sidebar-header">
+          <div className="app-title">
+            <div className="app-logo">
+              <img src="https://customer-assets.emergentagent.com/job_webauth-helper/artifacts/ksik3suf_nevermiss_logo-removebg-preview.png" alt="NeverMiss Logo" />
             </div>
-            
-            {/* Navigation Tabs */}
-            <div className="sidebar-navigation">
-              <button
-                className={`nav-tab ${activeTab === 'chat' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('chat'); setShowSidebar(false); }}
-              >
-                <span className="nav-tab-icon">💬</span>
-                Chat
-              </button>
-              <button
-                className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('dashboard'); setShowSidebar(false); }}
-              >
-                <span className="nav-tab-icon">📊</span>
-                Dashboard
-              </button>
-              <button
-                className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('settings'); setShowSidebar(false); }}
-              >
-                <span className="nav-tab-icon">⚙️</span>
-                Settings
-              </button>
-              <button
-                className={`nav-tab ${activeTab === 'pricing' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('pricing'); setShowSidebar(false); }}
-              >
-                <span className="nav-tab-icon">💳</span>
-                Pricing
-              </button>
-              <button
-                className={`nav-tab ${activeTab === 'about' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('about'); setShowSidebar(false); }}
-              >
-                <span className="nav-tab-icon">ℹ️</span>
-                About
-              </button>
-            </div>
-
-            {/* New Chat Button */}
-            <button onClick={createNewSession} className="new-chat-button">
-              <span className="new-chat-button-icon">+</span>
-              New Chat
+            NeverMiss
+          </div>
+          
+          {/* Navigation Tabs */}
+          <div className="sidebar-navigation">
+            <button
+              className={`nav-tab ${activeTab === 'chat' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('chat'); setShowSidebar(false); }}
+            >
+              <span className="nav-tab-icon small-icon">📅</span>
+              Plan Your Day
+            </button>
+            <button
+              className={`nav-tab ${activeTab === 'university_guide' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('university_guide'); setShowSidebar(false); }}
+            >
+              <span className="nav-tab-icon small-icon">🎓</span>
+              University Guide
+            </button>
+            <button
+              className={`nav-tab ${activeTab === 'study_guide' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('study_guide'); setShowSidebar(false); }}
+            >
+              <span className="nav-tab-icon small-icon">📚</span>
+              Study Guide
+            </button>
+            <button
+              className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('dashboard'); setShowSidebar(false); }}
+            >
+              <span className="nav-tab-icon small-icon">📊</span>
+              Dashboard
+            </button>
+            <button
+              className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('settings'); setShowSidebar(false); }}
+            >
+              <span className="nav-tab-icon small-icon">⚙️</span>
+              Settings
+            </button>
+            <button
+              className={`nav-tab ${activeTab === 'pricing' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('pricing'); setShowSidebar(false); }}
+            >
+              <span className="nav-tab-icon small-icon">💳</span>
+              Pricing
+            </button>
+            <button
+              className={`nav-tab ${activeTab === 'about' ? 'active' : ''}`}
+              onClick={() => { setActiveTab('about'); setShowSidebar(false); }}
+            >
+              <span className="nav-tab-icon small-icon">ℹ️</span>
+              About
             </button>
           </div>
 
-          {/* Conversation List */}
-          <div className="conversation-list">
-            {sessions.map((session) => (
-              <div
-                key={session.id}
-                onClick={() => { setCurrentSession(session); setShowSidebar(false); }}
-                className={`conversation-item ${currentSession?.id === session.id ? 'active' : ''}`}
-              >
-                <div className="conversation-title">{session.title}</div>
-                <div className="conversation-meta">
-                  <span>{new Date(session.created_at).toLocaleDateString()}</span>
-                  <span>{session.message_count || 0} msgs</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* New Chat Button */}
+          <button onClick={createNewSession} className="new-chat-button">
+            <span className="new-chat-button-icon">+</span>
+            New Chat
+          </button>
         </div>
 
-        {/* Mobile Drawer Overlay */}
+        {/* Conversation List */}
+        <div className="conversation-list">
+          {sessions.map((session) => (
+            <div
+              key={session.id}
+              onClick={() => { setCurrentSession(session); setShowSidebar(false); }}
+              className={`conversation-item ${currentSession?.id === session.id ? 'active' : ''}`}
+            >
+              <div className="conversation-title">{session.title}</div>
+              <div className="conversation-meta">
+                <span>{new Date(session.created_at).toLocaleDateString()}</span>
+                <span>{session.message_count || 0} msgs</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </>
+    );
+
+    return (
+      <>
+        {/* Desktop Sidebar */}
+        <div className="sidebar hidden md:flex md:flex-col">
+          {sidebarContent}
+        </div>
+
+        {/* Mobile Drawer */}
         <div
-          className={`sidebar-backdrop ${showSidebar ? 'visible' : ''}`}
+          className={`sidebar-backdrop md:hidden ${showSidebar ? 'visible' : ''}`}
           onClick={() => setShowSidebar(false)}
         />
-        <div className={`sidebar-drawer ${showSidebar ? 'open' : ''}`}>
-          <div className="sidebar-header">
-            <div className="app-title">
-              <div className="app-logo">
-                <img src="https://customer-assets.emergentagent.com/job_webauth-helper/artifacts/ksik3suf_nevermiss_logo-removebg-preview.png" alt="NeverMiss Logo" />
-              </div>
-              NeverMiss
-            </div>
-            
-            {/* Navigation Tabs */}
-            <div className="sidebar-navigation">
-              <button
-                className={`nav-tab ${activeTab === 'chat' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('chat'); setShowSidebar(false); }}
-              >
-                <span className="nav-tab-icon">💬</span>
-                Chat
-              </button>
-              <button
-                className={`nav-tab ${activeTab === 'dashboard' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('dashboard'); setShowSidebar(false); }}
-              >
-                <span className="nav-tab-icon">📊</span>
-                Dashboard
-              </button>
-              <button
-                className={`nav-tab ${activeTab === 'settings' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('settings'); setShowSidebar(false); }}
-              >
-                <span className="nav-tab-icon">⚙️</span>
-                Settings
-              </button>
-              <button
-                className={`nav-tab ${activeTab === 'pricing' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('pricing'); setShowSidebar(false); }}
-              >
-                <span className="nav-tab-icon">💳</span>
-                Pricing
-              </button>
-              <button
-                className={`nav-tab ${activeTab === 'about' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('about'); setShowSidebar(false); }}
-              >
-                <span className="nav-tab-icon">ℹ️</span>
-                About
-              </button>
-            </div>
-
-            {/* New Chat Button */}
-            <button onClick={createNewSession} className="new-chat-button">
-              <span className="new-chat-button-icon">+</span>
-              New Chat
-            </button>
-          </div>
-
-          {/* Conversation List */}
-          <div className="conversation-list">
-            {sessions.map((session) => (
-              <div
-                key={session.id}
-                onClick={() => { setCurrentSession(session); setShowSidebar(false); }}
-                className={`conversation-item ${currentSession?.id === session.id ? 'active' : ''}`}
-              >
-                <div className="conversation-title">{session.title}</div>
-                <div className="conversation-meta">
-                  <span>{new Date(session.created_at).toLocaleDateString()}</span>
-                  <span>{session.message_count || 0} msgs</span>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className={`sidebar-drawer md:hidden ${showSidebar ? 'open' : ''}`}>
+          {sidebarContent}
         </div>
       </>
     );

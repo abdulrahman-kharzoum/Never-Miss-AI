@@ -301,6 +301,57 @@ async def refresh_access_token(user_id: str, refresh_token_data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error refreshing token: {str(e)}")
 
+@app.post("/api/n8n/webhook/callback", response_model=TokenResponse)
+async def n8n_callback(data: dict):
+    """Endpoint for n8n to send AI responses back to be saved in Supabase."""
+    try:
+        session_id = data.get("sessionId")
+        ai_response = data.get("output")
+        user_id = data.get("userId")
+        
+        # Get optional fields from n8n
+        message_type = data.get("messageType", "text") # Default to 'text'
+        timestamp = data.get("timestamp", datetime.utcnow().isoformat()) # Default to now
+        metadata = data.get("metadata", {}) # Default to an empty object
+
+        if not all([session_id, ai_response, user_id]):
+            raise HTTPException(status_code=400, detail="Missing required fields in callback data.")
+
+        # This is where you would save the message to Supabase.
+        # The print statement now includes all the necessary fields.
+        print({
+            "session_id": session_id,
+            "user_id": user_id,
+            "message_type": message_type,
+            "content": ai_response,
+            "sender": "ai",
+            "timestamp": timestamp,
+            "metadata": metadata
+        })
+
+        # In a real implementation with the Supabase Python client:
+        # from supabase import create_client, Client
+        # supabase_url = os.getenv("SUPABASE_URL")
+        # supabase_key = os.getenv("SUPABASE_KEY")
+        # supabase: Client = create_client(supabase_url, supabase_key)
+        # supabase.table("chat_messages").insert({
+        #     "session_id": session_id,
+        #     "user_id": user_id,
+        #     "message_type": message_type,
+        #     "content": ai_response,
+        #     "sender": "ai",
+        #     "timestamp": timestamp,
+        #     "metadata": metadata
+        # }).execute()
+
+        return TokenResponse(
+            success=True,
+            message="AI response received and processed.",
+            userId=user_id
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing n8n callback: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
