@@ -6,7 +6,18 @@ const AudioPlayer = ({ audioUrl, audioBlob, autoplay = false }) => {
   const [duration, setDuration] = useState(0);
   const audioRef = useRef(null);
   
-  const src = audioUrl || (audioBlob ? URL.createObjectURL(audioBlob) : null);
+  // Check if the audioUrl is a Base64 string and add the prefix if it's missing
+  const getPlayableUrl = (url) => {
+    if (typeof url === 'string' && !url.startsWith('data:')) {
+      // A simple check to see if it looks like a Base64 string
+      if (url.length > 100 && url.match(/^[A-Za-z0-9+/=]+$/)) {
+        return `data:audio/mpeg;base64,${url}`;
+      }
+    }
+    return url;
+  };
+
+  const src = getPlayableUrl(audioUrl) || (audioBlob ? URL.createObjectURL(audioBlob) : null);
   
   const togglePlay = async () => {
     if (!audioRef.current) return;

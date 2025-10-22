@@ -12,18 +12,49 @@ export const useTheme = () => {
 };
 
 export const ThemeProvider = ({ children, userId }) => {
-  const [theme, setThemeState] = useState('light');
+  // Initialize state from localStorage, defaulting to 'light'
+  const [theme, setThemeState] = useState(() => {
+    try {
+      const savedTheme = localStorage.getItem('app-theme');
+      return savedTheme || 'light';
+    } catch (error) {
+      return 'light';
+    }
+  });
   const [loading, setLoading] = useState(true);
 
+  // Effect to fetch theme from Supabase and sync with localStorage
   useEffect(() => {
-    loadTheme();
+    const loadThemeFromSupabase = async () => {
+      if (!userId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('user_settings')
+          .select('theme')
+          .eq('user_id', userId)
+          .single();
+
+        if (data && data.theme) {
+          setThemeState(data.theme);
+          localStorage.setItem('app-theme', data.theme);
+        }
+      } catch (error) {
+        console.log('No theme preference found in Supabase, using local or default');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadThemeFromSupabase();
   }, [userId]);
 
+  // Effect to apply theme to the document
   useEffect(() => {
-    // Apply theme to document using data-theme attribute
     document.documentElement.setAttribute('data-theme', theme);
-    
-    // Also add/remove dark class for Tailwind compatibility
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {
@@ -31,31 +62,10 @@ export const ThemeProvider = ({ children, userId }) => {
     }
   }, [theme]);
 
-  const loadTheme = async () => {
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('theme')
-        .eq('user_id', userId)
-        .single();
-
-      if (data && data.theme) {
-        setThemeState(data.theme);
-      }
-    } catch (error) {
-      console.log('No theme preference found, using default');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Function to update theme in state, localStorage, and Supabase
   const setTheme = async (newTheme) => {
     setThemeState(newTheme);
+    localStorage.setItem('app-theme', newTheme);
 
     if (userId) {
       try {
@@ -67,7 +77,7 @@ export const ThemeProvider = ({ children, userId }) => {
             updated_at: new Date().toISOString()
           });
       } catch (error) {
-        console.error('Error saving theme:', error);
+        console.error('Error saving theme to Supabase:', error);
       }
     }
   };

@@ -314,6 +314,10 @@ async def n8n_callback(data: dict):
         timestamp = data.get("timestamp", datetime.utcnow().isoformat()) # Default to now
         metadata = data.get("metadata", {}) # Default to an empty object
 
+        # Add a check to ensure metadata is a dictionary
+        if not isinstance(metadata, dict):
+            metadata = {}
+
         if not all([session_id, ai_response, user_id]):
             raise HTTPException(status_code=400, detail="Missing required fields in callback data.")
 
