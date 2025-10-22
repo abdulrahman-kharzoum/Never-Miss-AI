@@ -20,6 +20,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false); // Mobile drawer state
+  const [isExpanded, setIsExpanded] = useState(false); // Expanded input state
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -687,7 +688,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         </div>
 
         {/* Input Area */}
-        <div className="input-area">
+        <div className={`input-area ${isExpanded ? 'expanded' : ''}`}>
           <div className="input-container-wrapper">
             <div className="message-input-container">
               <div className="message-input-inner">
@@ -701,6 +702,14 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
                   className="message-input"
                   rows="1"
                 />
+                <button
+                  onClick={() => setIsExpanded(!isExpanded)}
+                  className="expand-button"
+                >
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isExpanded ? "M4 8h4V4m-4 4l-4-4m16 0h-4v4m4-4l4-4M4 16h4v4m-4-4l-4 4m16 0h-4v-4m4 4l4 4" : "M4 8V4h4m0 0l-4-4m16 0v4h-4m0 0l4-4M4 16v4h4m0 0l-4 4m16 0v-4h-4m0 0l4 4"} />
+                  </svg>
+                </button>
                 <button
                   onClick={sendMessage}
                   disabled={!inputMessage.trim() || sending}

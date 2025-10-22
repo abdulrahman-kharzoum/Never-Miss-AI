@@ -577,10 +577,10 @@
    ======================================== */
 
 .input-area {
-  background: var(--secondary-bg);
+  background: transparent;
   border-top: 1px solid var(--border-color);
   padding: 20px 24px;
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+  box-shadow: none;
 }
 
 .input-container-wrapper {
@@ -593,7 +593,8 @@
   background: var(--secondary-bg);
   border-radius: 24px;
   padding: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  /* Add a subtle, theme-colored shadow */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 0 25px -5px var(--accent-color-2);
 }
 
 /* Animated glowing border - Dark mode */
@@ -623,13 +624,15 @@
 /* Light mode glowing border */
 [data-theme="light"] .message-input-container::before,
 .light-mode .message-input-container::before {
+  /* A beautiful, lighter rainbow gradient for light mode */
   background: linear-gradient(
     90deg,
-    #f87a14,
-    #ff9f4d,
-    #f87a14,
-    #ff9f4d,
-    #f87a14
+    #ff8a80, /* Light Pink */
+    #ffb480, /* Light Orange */
+    #80ffc3, /* Mint Green */
+    #80d4ff, /* Sky Blue */
+    #b180ff, /* Lavender */
+    #ff8a80  /* Back to Light Pink */
   );
 }
 
@@ -673,8 +676,14 @@
   outline: none;
   resize: none;
   max-height: 120px;
+  overflow-y: auto; /* Make textarea scrollable */
   font-family: var(--font-primary);
   line-height: 1.5;
+}
+
+.input-area.expanded .message-input {
+  height: 50vh;
+  max-height: 50vh;
 }
 
 .message-input::placeholder {
@@ -729,6 +738,31 @@
   width: 20px;
   height: 20px;
   color: white;
+}
+
+/* Expand Button */
+.expand-button {
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: var(--text-muted);
+}
+
+.expand-button:hover {
+  color: var(--text-primary);
+}
+
+.expand-button svg {
+  width: 20px;
+  height: 20px;
 }
 
 /* ========================================
@@ -807,6 +841,22 @@
   
   .message-input-container {
     padding: 3px;
+  }
+
+  .message-input-inner {
+    gap: 4px;
+    padding: 4px 8px;
+  }
+
+  .send-button, .expand-button {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
+
+  .send-button svg, .expand-button svg {
+    width: 18px;
+    height: 18px;
   }
 
   .chat-header {
