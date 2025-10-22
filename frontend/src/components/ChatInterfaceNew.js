@@ -214,7 +214,14 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         throw userMsgError;
       }
 
-      const accessToken = tokenManager.getAccessToken();
+      // Ensure we have a valid token before sending the message
+      const accessToken = await tokenManager.ensureValidToken();
+      if (!accessToken) {
+        alert("Your session has expired. Please log in again.");
+        setSending(false);
+        return;
+      }
+      
       const refreshToken = localStorage.getItem('refreshToken');
       
       // Generate a timestamp for the AI's eventual response
@@ -238,16 +245,26 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
           ? userMessage.substring(0, 50) + '...' 
           : userMessage;
         
+        const updated_at = new Date().toISOString();
+
+        // Update the session in the database
         await supabase
           .from('chat_sessions')
           .update({ 
             title: conversationTitle,
-            updated_at: new Date().toISOString(),
+            updated_at: updated_at,
             message_count: 2 // User and eventual AI message
           })
           .eq('session_id', currentSession.session_id);
         
-        await loadSessions();
+        // Instead of re-fetching all sessions, update the local state directly
+        const updatedSessions = sessions.map(session =>
+          session.id === currentSession.id
+            ? { ...session, title: conversationTitle, updated_at: updated_at, message_count: 2 }
+            : session
+        );
+        setSessions(updatedSessions);
+        
       } else {
         await supabase
           .from('chat_sessions')
@@ -314,7 +331,14 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
         if (userMsgError) throw userMsgError;
 
-        const accessToken = tokenManager.getAccessToken();
+        // Ensure we have a valid token before sending the message
+        const accessToken = await tokenManager.ensureValidToken();
+        if (!accessToken) {
+          alert("Your session has expired. Please log in again.");
+          setSending(false);
+          return;
+        }
+
         const refreshToken = localStorage.getItem('refreshToken');
         const base64AudioForN8N = base64AudioDataUrl.split(',')[1];
 
@@ -506,10 +530,6 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
               className={`conversation-item ${currentSession?.id === session.id ? 'active' : ''}`}
             >
               <div className="conversation-title">{session.title}</div>
-              <div className="conversation-meta">
-                <span>{new Date(session.created_at).toLocaleDateString()}</span>
-                <span>{session.message_count || 0} msgs</span>
-              </div>
             </div>
           ))}
         </div>
@@ -518,19 +538,16 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
     return (
       <>
-        {/* Desktop Sidebar */}
-        <div className="sidebar hidden md:flex md:flex-col">
+        {/* A single, responsive sidebar component */}
+        <div className={`sidebar ${showSidebar ? 'open' : ''}`}>
           {sidebarContent}
         </div>
 
-        {/* Mobile Drawer */}
+        {/* Mobile backdrop */}
         <div
-          className={`sidebar-backdrop md:hidden ${showSidebar ? 'visible' : ''}`}
+          className={`sidebar-backdrop ${showSidebar ? 'visible' : ''}`}
           onClick={() => setShowSidebar(false)}
         />
-        <div className={`sidebar-drawer md:hidden ${showSidebar ? 'open' : ''}`}>
-          {sidebarContent}
-        </div>
       </>
     );
   }

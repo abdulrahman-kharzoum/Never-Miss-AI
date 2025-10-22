@@ -30,7 +30,16 @@ class TokenManager {
     this.expiresAt = localStorage.getItem('expiresAt');
   }
 
-  clearTokens() {
+  clearSessionTokens() {
+    // Only clear the short-lived access token and its expiry
+    this.accessToken = null;
+    this.expiresAt = null;
+    
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('expiresAt');
+  }
+
+  clearAllTokens() {
     this.accessToken = null;
     this.refreshToken = null;
     this.userId = null;
@@ -50,69 +59,54 @@ class TokenManager {
     return this.userId;
   }
 
-  isTokenExpired() {
-    if (!this.expiresAt) return true;
-    
-    const expiryTime = new Date(this.expiresAt).getTime();
-    const currentTime = Date.now();
-    const bufferTime = 5 * 60 * 1000; // 5 minutes buffer
-    
-    return currentTime >= (expiryTime - bufferTime);
-  }
+  async ensureValidToken() {
+    // 1. If we have an access token, validate it with Google's tokeninfo endpoint.
+    if (this.accessToken) {
+      try {
+        await axios.get(`https://oauth2.googleapis.com/tokeninfo?access_token=${this.accessToken}`);
+        console.log('✅ Current token is valid with Google.');
+        return this.accessToken;
+      } catch (error) {
+        console.warn('⚠️ Current token is invalid or expired. Proceeding to refresh...');
+      }
+    } else {
+      console.log('ℹ️ No access token found locally. Proceeding to refresh...');
+    }
 
-  async refreshAccessToken() {
-    if (!this.refreshToken || !this.userId) {
-      console.warn('⚠️ No refresh token available');
+    // 2. If there's no token or if it's invalid, we must refresh it.
+    if (!this.userId) {
+      console.error('❌ Cannot refresh token without a user ID. User may need to log in again.');
       return null;
     }
 
     try {
+      console.log('🔄 Calling backend to get a new access token...');
       const response = await axios.post(`${BACKEND_URL}/api/auth/refresh-token`, {
         user_id: this.userId,
-        refresh_token: this.refreshToken
       });
 
-      const { accessToken, expiresAt } = response.data;
+      const { accessToken, expiresAt, refreshToken } = response.data;
+
+      // 3. As you requested, validate the NEWLY received token with Google before using it.
+      console.log('🔄 Verifying the new token with Google...');
+      await axios.get(`https://oauth2.googleapis.com/tokeninfo?access_token=${accessToken}`);
+      console.log('✅ New token is verified and valid!');
+
+      // 4. Store the new, verified tokens.
+      this.setTokens(accessToken, refreshToken, this.userId, expiresAt);
       
-      // Update tokens
-      this.accessToken = accessToken;
-      this.expiresAt = expiresAt;
-      
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('expiresAt', expiresAt);
-      
-      console.log('✅ Token refreshed successfully');
       return accessToken;
     } catch (error) {
-      console.warn('⚠️ Token refresh failed, will use existing token:', error.message);
-      // Don't clear tokens or redirect, just continue with existing token
-      return this.accessToken;
+      console.error('❌ A critical error occurred during token refresh and validation:', error);
+      // If the refresh process itself fails, the user's session is likely invalid.
+      this.clearAllTokens();
+      // Force a reload to prompt the user to log in again.
+      window.location.reload();
+      return null;
     }
   }
 }
 
 export const tokenManager = new TokenManager();
-
-// Axios interceptor for automatic token refresh (DISABLED to prevent loops)
-// We'll manually handle token refresh when needed
-axios.interceptors.request.use(
-  async (config) => {
-    // Don't interfere with auth endpoints
-    if (config.url?.includes('/api/auth')) {
-      return config;
-    }
-    
-    // Check if token is expired before making request
-    if (tokenManager.isTokenExpired()) {
-      console.log('🔄 Token expiring soon, refreshing...');
-      await tokenManager.refreshAccessToken();
-    }
-    
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
 
 export default tokenManager;

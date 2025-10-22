@@ -15,10 +15,28 @@ load_dotenv()
 
 app = FastAPI(title="Google Auth API")
 
+@app.on_event("startup")
+async def startup_db_client():
+    """Ping MongoDB on startup to check the connection."""
+    try:
+        # The ismaster command is cheap and does not require auth.
+        await client.admin.command('ismaster')
+        print("✅ Successfully connected to MongoDB.")
+    except Exception as e:
+        print("❌ Failed to connect to MongoDB.")
+        print(e)
+
+# Define the list of allowed origins (your frontend domains)
+origins = [
+    "http://localhost:3000",  # For local development
+    # Add your production frontend URL here when you deploy
+    # e.g., "https://www.your-app-name.com"
+]
+
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend domain
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -106,27 +124,28 @@ async def store_token(token_data: TokenData):
     try:
         # Encrypt the access token
         encrypted_access_token = encrypt_token(token_data.accessToken)
-        encrypted_refresh_token = None
-        if token_data.refreshToken:
-            encrypted_refresh_token = encrypt_token(token_data.refreshToken)
         
-        # Prepare document for storage
-        user_doc = {
+        # Prepare the fields that are always updated
+        update_fields = {
             "userId": token_data.userId,
             "email": token_data.email,
             "displayName": token_data.displayName,
             "photoURL": token_data.photoURL,
             "accessToken": encrypted_access_token,
-            "refreshToken": encrypted_refresh_token,
-            "expiresAt": token_data.expiresAt, # Use expiresAt from frontend
+            "expiresAt": token_data.expiresAt,
             "scopes": token_data.scopes,
             "updatedAt": datetime.utcnow().isoformat()
         }
         
-        # Upsert the document
+        # Only update the refresh token if a new one is provided
+        if token_data.refreshToken:
+            encrypted_refresh_token = encrypt_token(token_data.refreshToken)
+            update_fields["refreshToken"] = encrypted_refresh_token
+        
+        # Upsert the document, using $set to avoid overwriting the refresh token
         await db.user_tokens.update_one(
             {"userId": token_data.userId},
-            {"$set": user_doc},
+            {"$set": update_fields},
             upsert=True
         )
 
@@ -228,9 +247,21 @@ async def list_users(authorized: bool = Depends(verify_n8n_api_key)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error listing users: {str(e)}")
 
+class RefreshTokenRequest(BaseModel):
+    user_id: Optional[str] = None
+    userId: Optional[str] = None
+
 @app.post("/api/auth/refresh-token", response_model=UserToken)
-async def refresh_access_token(user_id: str, refresh_token_data: dict):
-    """Refresh user's Google OAuth access token using the refresh token."""
+async def refresh_access_token(request: RefreshTokenRequest, authorized: bool = Depends(verify_n8n_api_key)):
+    """
+    Refresh user's Google OAuth access token using the refresh token.
+    This endpoint is protected and can only be called by n8n.
+    """
+    # Accept either user_id (snake_case) or userId (camelCase)
+    user_id = request.user_id or request.userId
+    if not user_id:
+        raise HTTPException(status_code=422, detail="Field 'user_id' or 'userId' is required.")
+
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         raise HTTPException(status_code=500, detail="Server not configured for Google OAuth.")
 
@@ -252,12 +283,27 @@ async def refresh_access_token(user_id: str, refresh_token_data: dict):
                 "https://oauth2.googleapis.com/token",
                 data=token_refresh_data
             )
-            response.raise_for_status()
+            
+            # Handle Google's error response
+            if response.status_code != 200:
+                error_data = response.json()
+                # If the refresh token is invalid, Google returns a 400 or 401 with "invalid_grant"
+                if error_data.get("error") == "invalid_grant":
+                    # The refresh token is no longer valid. We should clear it to force re-authentication.
+                    await db.user_tokens.update_one(
+                        {"userId": user_id},
+                        {"$set": {"refreshToken": None, "accessToken": None, "expiresAt": None}}
+                    )
+                    raise HTTPException(status_code=401, detail="Invalid refresh token. User must re-authenticate.")
+                # For other errors, raise a generic exception
+                raise HTTPException(status_code=response.status_code, detail=f"Google OAuth error: {response.text}")
+
             google_tokens = response.json()
 
         new_access_token = google_tokens.get("access_token")
         new_expires_in = google_tokens.get("expires_in")
-        new_refresh_token = google_tokens.get("refresh_token", decrypted_refresh_token) # Google might issue a new refresh token
+        # Google might issue a new refresh token, but often doesn't. Use the old one if a new one isn't provided.
+        new_refresh_token = google_tokens.get("refresh_token", decrypted_refresh_token)
 
         if not new_access_token:
             raise HTTPException(status_code=400, detail="Failed to retrieve new access token from Google.")
@@ -289,17 +335,11 @@ async def refresh_access_token(user_id: str, refresh_token_data: dict):
             expiresAt=new_expires_at,
             scopes=user_doc.get("scopes", [])
         )
-    except httpx.HTTPStatusError as e:
-        # If refresh token is invalid, force re-login by deleting it
-        if e.response.status_code == 400 and "invalid_grant" in e.response.text:
-            await db.user_tokens.update_one(
-                {"userId": user_id},
-                {"$set": {"refreshToken": None, "accessToken": None, "expiresAt": None}}
-            )
-            raise HTTPException(status_code=401, detail="Invalid refresh token. Please re-authenticate.")
-        raise HTTPException(status_code=e.response.status_code, detail=f"Google OAuth error during refresh: {e.response.text}")
+    except HTTPException as e:
+        # Re-raise known HTTP exceptions
+        raise e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error refreshing token: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred during token refresh: {str(e)}")
 
 @app.post("/api/n8n/webhook/callback", response_model=TokenResponse)
 async def n8n_callback(data: dict):
