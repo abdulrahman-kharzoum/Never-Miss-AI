@@ -68,8 +68,7 @@ const StudyGuideTab = () => {
   }, []);
 
   const uploadFiles = async () => {
-    // Create a session id so the backend can group files for a single RAG ingestion run
-    const sessionId = `rag_${Date.now()}_${Math.random().toString(36).substr(2,8)}`;
+    const sessionId = `rag_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
 
     const { data: { user } } = await supabase.auth.getUser();
     const userId = user?.id || localStorage.getItem('userId') || 'anonymous';
@@ -78,92 +77,48 @@ const StudyGuideTab = () => {
       return;
     }
 
-    // mark files as uploading
     setFiles(prevFiles => prevFiles.map(file => ({ ...file, status: 'uploading', progress: 0, sessionId })));
 
-    // helper to upload single file with XHR so we can track progress
-    const uploadSingle = (fileData) => {
-      return new Promise((resolve) => {
-        const xhr = new XMLHttpRequest();
-        const url = 'https://n8n.zentraid.com/webhook/RAG_upload_files';
-        const fd = new FormData();
-        fd.append('file', fileData.file, fileData.file.name);
-        fd.append('userId', userId);
-        fd.append('sessionId', sessionId);
-        fd.append('metadata', JSON.stringify({ name: fileData.file.name, size: fileData.file.size, type: fileData.file.type }));
+    const xhr = new XMLHttpRequest();
+    const url = 'https://n8n.zentraid.com/webhook/RAG_upload_files';
+    const formData = new FormData();
 
-        xhr.upload.addEventListener('progress', (e) => {
-          if (e.lengthComputable) {
-            const percent = Math.round((e.loaded / e.total) * 100);
-            setFiles(prev => prev.map(f => f.id === fileData.id ? { ...f, progress: percent } : f));
-          }
-        });
+    files.forEach((fileData, index) => {
+      formData.append(`file_${index}`, fileData.file, fileData.file.name);
+    });
 
-        xhr.onreadystatechange = () => {
-          if (xhr.readyState === 4) {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              setFiles(prev => prev.map(f => f.id === fileData.id ? { ...f, status: 'completed', progress: 100 } : f));
-              resolve({ success: true, id: fileData.id });
-            } else {
-              setFiles(prev => prev.map(f => f.id === fileData.id ? { ...f, status: 'error' } : f));
-              resolve({ success: false, id: fileData.id });
-            }
-          }
-        };
+    formData.append('userId', userId);
+    formData.append('sessionId', sessionId);
+    formData.append('metadata', JSON.stringify(files.map(f => ({ name: f.file.name, size: f.file.size, type: f.file.type }))));
+    formData.append('action', 'upload_and_finalize'); // Indicate a combined action
 
-        xhr.open('POST', url, true);
-        xhr.setRequestHeader('Authorization', `Bearer ${process.env.REACT_APP_N8N_API_KEY}`);
-        // optionally set a timeout
-        xhr.timeout = 2 * 60 * 1000; // 2 minutes per file
-        xhr.ontimeout = () => {
-          setFiles(prev => prev.map(f => f.id === fileData.id ? { ...f, status: 'error' } : f));
-          resolve({ success: false, id: fileData.id });
-        };
-
-        xhr.send(fd);
-      });
-    };
-
-    // concurrency-limited runner (batching)
-    const concurrency = 4;
-    const queue = [...files];
-    const results = [];
-
-    const workers = new Array(concurrency).fill(null).map(async () => {
-      while (queue.length > 0) {
-        const fileData = queue.shift();
-        if (!fileData) break;
-        // skip files that already completed or errored
-        if (fileData.status === 'completed') {
-          results.push({ success: true, id: fileData.id });
-          continue;
-        }
-        // upload and collect result
-        // eslint-disable-next-line no-await-in-loop
-        const res = await uploadSingle(fileData);
-        results.push(res);
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        const percent = Math.round((e.loaded / e.total) * 100);
+        setFiles(prev => prev.map(f => ({ ...f, progress: percent }))); // Update all files with overall progress
       }
     });
 
-    await Promise.all(workers);
+    xhr.onreadystatechange = () => {
+      if (xhr.readyState === 4) {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          setFiles(prev => prev.map(f => ({ ...f, status: 'completed', progress: 100 })));
+        } else {
+          setFiles(prev => prev.map(f => ({ ...f, status: 'error' })));
+          console.error('Upload failed:', xhr.status, xhr.statusText, xhr.responseText);
+        }
+      }
+    };
 
-    // After upload attempts, notify the webhook to start ingestion (finalize)
-    try {
-      const summary = {
-        action: 'finalize',
-        sessionId,
-        userId,
-        files: files.map(f => ({ name: f.file.name, size: f.file.size, type: f.file.type }))
-      };
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('Authorization', `Bearer ${process.env.REACT_APP_N8N_API_KEY}`);
+    xhr.timeout = 5 * 60 * 1000; // 5 minutes for the entire batch
+    xhr.ontimeout = () => {
+      setFiles(prev => prev.map(f => ({ ...f, status: 'error' })));
+      console.error('Upload timed out');
+    };
 
-      await fetch('https://n8n.zentraid.com/webhook/RAG_upload_files', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.REACT_APP_N8N_API_KEY}` },
-        body: JSON.stringify(summary)
-      });
-    } catch (err) {
-      console.warn('Failed to send finalize request', err);
-    }
+    xhr.send(formData);
   };
 
   const getFileIcon = (type) => {
