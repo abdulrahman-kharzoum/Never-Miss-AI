@@ -3,6 +3,7 @@ import React from 'react';
 const NavigationTabs = ({ activeTab, setActiveTab }) => {
   const tabs = [
     { id: 'chat', label: 'Chat', icon: '💬', gradient: 'from-blue-600 via-blue-700 to-blue-800' },
+    { id: 'studyGuide', label: 'Study Guide', icon: '📚', gradient: 'from-purple-600 via-purple-700 to-purple-800' },
     { id: 'dashboard', label: 'Dashboard', icon: '📊', gradient: 'from-cyan-600 via-cyan-700 to-cyan-800' },
     { id: 'settings', label: 'Settings', icon: '⚙️', gradient: 'from-teal-600 via-teal-700 to-teal-800' }
   ];

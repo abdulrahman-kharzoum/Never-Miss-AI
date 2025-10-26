@@ -9,6 +9,7 @@ import DashboardTab from './DashboardTab';
 import SettingsTab from './SettingsTab';
 import PricingTab from './PricingTab';
 import AboutTab from './AboutTab';
+import StudyGuideTab from './StudyGuideTab';
 import '../ChatInterfaceNew.css';
 
 const ChatInterfaceNew = ({ user, onSignOut }) => {
@@ -431,6 +432,18 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
           <div style={{ overflowY: 'auto', flex: 1 }}>
             <PricingTab />
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Study Guide Tab
+  if (activeTab === 'study_guide') {
+    return (
+      <div className="chat-interface-container">
+        {renderSidebar()}
+        <div className="main-chat-area">
+          <StudyGuideTab />
         </div>
       </div>
     );
