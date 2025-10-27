@@ -1,12 +1,41 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../utils/supabaseClient';
+import io from 'socket.io-client';
 
 const StudyGuideTab = () => {
   const [files, setFiles] = useState([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef(null);
   const { theme } = useTheme();
+
+  const socket = useRef(null);
+
+  useEffect(() => {
+    socket.current = io(process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000');
+
+    socket.current.on('file_status_update', (data) => {
+      console.log('File status update received:', data);
+      setFiles(prevFiles =>
+        prevFiles.map(file =>
+          file.sessionId === data.sessionId
+            ? { ...file, status: data.status, progress: data.progress || file.progress }
+            : file
+        )
+      );
+
+      if (data.status === 'completed' && data.redirectUrl) {
+        alert(data.message || `Files for session ${data.sessionId} are ready!`);
+        console.log('New Chat Webhook URL (from n8n): ', data.redirectUrl);
+        // You would typically update a state or context here to pass data.redirectUrl to your ChatInterface component.
+        // Example: setChatWebhookUrl(data.redirectUrl); and then ChatInterface uses this state.
+      }
+    });
+
+    return () => {
+      socket.current?.disconnect();
+    };
+  }, []);
 
   const allowedTypes = [
     'application/pdf',
@@ -81,6 +110,7 @@ const StudyGuideTab = () => {
 
     const xhr = new XMLHttpRequest();
     const url = 'https://n8n.zentraid.com/webhook/RAG_upload_files';
+    // const url = 'https://www.n8n.clikview.com/webhook/RAG_upload_files';
     const formData = new FormData();
 
     files.forEach((fileData, index) => {

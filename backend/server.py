@@ -10,6 +10,9 @@ from cryptography.fernet import Fernet
 import base64
 import hashlib
 import httpx
+import socketio
+from socketio import ASGIApp
+import asyncio
 
 load_dotenv()
 
@@ -41,6 +44,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+sio = socketio.AsyncServer(cors_allowed_origins=origins, async_mode="asgi")
+sio_app = ASGIApp(sio, other_asgi_app=app)
 
 # MongoDB connection
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017/")
@@ -88,6 +94,13 @@ class UserToken(BaseModel):
     refreshToken: Optional[str] = None # Make refreshToken optional
     expiresAt: Optional[str] = None
     scopes: list[str] = []
+
+class FileProcessingStatus(BaseModel):
+    sessionId: str
+    userId: str
+    status: str
+    message: Optional[str] = None
+    redirectUrl: Optional[str] = None
 
 # Helper functions
 def encrypt_token(token: str) -> str:
@@ -396,6 +409,21 @@ async def n8n_callback(data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing n8n callback: {str(e)}")
 
+@sio.on('connect')
+async def connect(sid, environ):
+    print(f"Client connected: {sid}")
+
+@sio.on('disconnect')
+async def disconnect(sid):
+    print(f"Client disconnected: {sid}")
+
+@app.post("/api/file-processing-status")
+async def file_processing_status_webhook(status_data: FileProcessingStatus):
+    print(f"Received status update from n8n: {status_data.dict()}")
+    # Emit the status update to all connected Socket.IO clients
+    await sio.emit('file_status_update', status_data.dict())
+    return {"message": "Status update received and broadcasted.", "success": True}
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(sio_app, host="0.0.0.0", port=8001)
