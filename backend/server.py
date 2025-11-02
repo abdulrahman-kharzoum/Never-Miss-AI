@@ -417,12 +417,42 @@ async def connect(sid, environ):
 async def disconnect(sid):
     print(f"Client disconnected: {sid}")
 
-@app.post("/api/file-processing-status")
-async def file_processing_status_webhook(status_data: FileProcessingStatus):
-    print(f"Received status update from n8n: {status_data.dict()}")
-    # Emit the status update to all connected Socket.IO clients
-    await sio.emit('file_status_update', status_data.dict())
-    return {"message": "Status update received and broadcasted.", "success": True}
+"""
+Deprecated: /api/file-processing-status
+
+This endpoint previously accepted file-processing status updates from n8n and broadcasted
+them over Socket.IO to connected clients. We're moving to a Supabase-first architecture:
+
+- n8n (or any processing service) should INSERT notifications directly into the
+    `notifications` table in Supabase.
+- Frontend clients already subscribe to the `notifications` table (see
+    `frontend/src/context/NotificationContext.jsx`) and will receive real-time INSERTs.
+
+Why this change?
+- Removes an extra hop and server maintenance responsibility.
+- Leverages Supabase's realtime/postgres_changes for low-latency delivery to all
+    connected clients (browser tabs, devices).
+
+If you still need a server-side compatibility layer, you can either:
+1) Keep this endpoint and have it INSERT into Supabase (using a service role key).
+2) Replace it with a lightweight forwarder that validates incoming requests and
+     then inserts into Supabase. But the recommended approach is to let n8n write
+     to Supabase directly using a secure service role key or using a dedicated
+     server-side function (not exposed in the browser).
+
+Example notification shape to INSERT into Supabase `notifications` table:
+
+{
+    "user_id": "PdO6B3E0oOcQlYIcvC5vn1Naflz2",
+    "session_id": "rag_1761600323807_ohl1nq4e",
+    "status": "pending",        # or "completed"
+    "message": "File processing has started for this session.",
+    "data": { "redirectUrl": null }
+}
+
+See `scripts/NOTIFICATIONS_N8N.md` for instructions and examples to configure n8n
+to write directly to Supabase's REST API or to use a server-side helper.
+"""
 
 if __name__ == "__main__":
     import uvicorn

@@ -2,6 +2,10 @@ import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const N8N_WEBHOOK_URL = 'https://n8n.zentraid.com/webhook/ConnectAI_KH_message1';
+// Static webhook for Study Guide tab (used when notifications indicate completion)
+const STUDY_GUIDE_WEBHOOK = 'https://n8n.zentraid.com/webhook/Study_Guid';
+
+export { N8N_WEBHOOK_URL, STUDY_GUIDE_WEBHOOK };
 
 export const storeUserToken = async (tokenData) => {
   try {

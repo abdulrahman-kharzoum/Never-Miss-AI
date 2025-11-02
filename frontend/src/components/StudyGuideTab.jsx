@@ -2,12 +2,23 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../utils/supabaseClient';
 import io from 'socket.io-client';
+import { useNotification } from '../context/NotificationContext';
+
+// Allowed MIME types are declared once to avoid recreating on each render and to keep hooks dep arrays stable
+const ALLOWED_TYPES = [
+  'application/pdf',
+  'text/csv',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain',
+];
 
 const StudyGuideTab = () => {
   const [files, setFiles] = useState([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef(null);
   const { theme } = useTheme();
+  const { addNotification } = useNotification();
 
   const socket = useRef(null);
 
@@ -24,26 +35,42 @@ const StudyGuideTab = () => {
         )
       );
 
-      if (data.status === 'completed' && data.redirectUrl) {
-        alert(data.message || `Files for session ${data.sessionId} are ready!`);
-        console.log('New Chat Webhook URL (from n8n): ', data.redirectUrl);
-        // You would typically update a state or context here to pass data.redirectUrl to your ChatInterface component.
-        // Example: setChatWebhookUrl(data.redirectUrl); and then ChatInterface uses this state.
+      // Use notification system instead of alert
+      if (data) {
+        const message = data.message || `Files for session ${data.sessionId} updated`;
+        // Compose notification payload
+        const notifData = {
+          sessionId: data.sessionId,
+          userId: data.userId,
+          status: data.status,
+          redirectUrl: data.redirectUrl || null,
+          source: 'file_processing', // so bell counts only file processing notifications
+        };
+
+        // If completed with a redirectUrl, add a clickable notification to open chat
+        if (data.status === 'completed' && data.redirectUrl) {
+          addNotification(message, 'success', 10000, (d) => {
+            try {
+              localStorage.setItem('chatWebhookUrl', d.redirectUrl);
+              window.open('/chat', '_blank');
+            } catch (e) {
+              console.error('Failed to open chat window', e);
+            }
+          }, notifData);
+          console.log('New Chat Webhook URL (from n8n): ', data.redirectUrl);
+        } else {
+          // pending or other statuses
+          addNotification(message, 'info', 10000, null, notifData);
+        }
       }
     });
 
     return () => {
       socket.current?.disconnect();
     };
-  }, []);
+  }, [addNotification]);
 
-  const allowedTypes = [
-    'application/pdf',
-    'text/csv',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'text/plain',
-  ];
+  const allowedTypes = ALLOWED_TYPES;
 
   const handleFiles = useCallback((newFiles) => {
     const arr = Array.from(newFiles);

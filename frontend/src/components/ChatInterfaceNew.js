@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import { sendMessageToN8N, sendAudioToN8N } from '../utils/api';
+import { N8N_WEBHOOK_URL } from '../utils/api';
 import { tokenManager } from '../utils/tokenManager';
 import VoiceRecorder from './VoiceRecorder';
 import AudioPlayer from './AudioPlayer';
@@ -10,6 +11,7 @@ import SettingsTab from './SettingsTab';
 import PricingTab from './PricingTab';
 import AboutTab from './AboutTab';
 import StudyGuideTab from './StudyGuideTab';
+import NotificationBell from './NotificationBell';
 import '../ChatInterfaceNew.css';
 
 const ChatInterfaceNew = ({ user, onSignOut }) => {
@@ -31,30 +33,92 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
   const resolvedUserId = user?.uid || '';
 
   const createNewSession = useCallback(async () => {
+    return createSessionWithWebhook(N8N_WEBHOOK_URL, 'chat');
+  }, [user]);
+
+  // Create a new session and associate it with a webhook URL. We persist webhook mapping in localStorage
+  const createSessionWithWebhook = useCallback(async (webhookUrl, source = 'tab') => {
     try {
       const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
+
+      const insertPayload = {
+        user_id: user.uid,
+        session_id: sessionId,
+        title: source === 'study_guide' ? 'Study Guide Chat' : source === 'university_guide' ? 'University Guide' : 'New Conversation',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        message_count: 0,
+      };
+
+      // Try to include webhook_url field if table supports it (fail silently otherwise)
+      try {
+        insertPayload.webhook_url = webhookUrl;
+      } catch (e) {
+        // ignore
+      }
+
       const { data, error } = await supabase
         .from('chat_sessions')
-        .insert({
-          user_id: user.uid,
-          session_id: sessionId,
-          title: 'New Conversation',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          message_count: 0
-        })
+        .insert(insertPayload)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // If insertion fails because of unknown column, retry without webhook_url
+        if (error.message && error.message.includes('column')) {
+          const { data: retryData, error: retryErr } = await supabase
+            .from('chat_sessions')
+            .insert({ ...insertPayload, webhook_url: undefined })
+            .select()
+            .single();
+          if (retryErr) throw retryErr;
+          setSessions((prev) => [retryData, ...prev]);
+          setCurrentSession(retryData);
+          // try to update metadata without webhook column won't be possible; skip
+        } else {
+          throw error;
+        }
+      } else {
+        setSessions((prevSessions) => [data, ...prevSessions]);
+        setCurrentSession(data);
+      }
 
-      setSessions((prevSessions) => [data, ...prevSessions]);
-      setCurrentSession(data);
       setMessages([]);
-      setShowSidebar(false); // Close mobile drawer after creating
+      setShowSidebar(false);
+
+      // Persist mapping for the session so we can look it up later without requiring DB changes
+      try {
+        localStorage.setItem(`session_webhook_${sessionId}`, webhookUrl);
+      } catch (e) {
+        console.error('Failed to persist session->webhook mapping', e);
+      }
+
+      // Update the DB row to include webhook_url and metadata if the table supports it.
+      try {
+        const updatePayload = {
+          webhook_url: webhookUrl,
+          metadata: JSON.stringify({ source })
+        };
+        const { error: updateErr } = await supabase
+          .from('chat_sessions')
+          .update(updatePayload)
+          .eq('session_id', sessionId);
+
+        if (updateErr) {
+          // If the update fails because the column does not exist, ignore.
+          if (!(updateErr.message && updateErr.message.includes('column'))) {
+            console.warn('Failed to update session metadata:', updateErr);
+          }
+        }
+      } catch (e) {
+        // ignore errors related to missing columns or permission issues
+        console.debug('Ignored error updating webhook metadata:', e);
+      }
+
+      return sessionId;
     } catch (error) {
-      console.error('Error creating session:', error);
+      console.error('Error creating session with webhook:', error);
+      return null;
     }
   }, [user]);
 
@@ -85,6 +149,34 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
       loadSessions();
     }
   }, [user, loadSessions]);
+
+  // On mount, if a webhook URL was provided (e.g. from notification), create a session automatically
+  useEffect(() => {
+    if (!user) return;
+    try {
+      // Prefer webhook supplied via URL param (e.g. /chat?webhook=...), then fallback to localStorage
+      const params = new URLSearchParams(window.location.search || '');
+      const webhookFromUrl = params.get('webhook');
+      if (webhookFromUrl) {
+        createSessionWithWebhook(webhookFromUrl, 'study_guide');
+        // Remove the webhook query param to avoid duplicate session creation on reload
+        params.delete('webhook');
+        const cleaned = params.toString();
+        const newUrl = window.location.pathname + (cleaned ? `?${cleaned}` : '');
+        window.history.replaceState({}, '', newUrl);
+      } else {
+        const webhook = localStorage.getItem('chatWebhookUrl');
+        if (webhook) {
+          // create a session associated with this webhook
+          createSessionWithWebhook(webhook, 'study_guide');
+          // remove the temporary key so it doesn't create duplicates
+          localStorage.removeItem('chatWebhookUrl');
+        }
+      }
+    } catch (e) {
+      console.error('Error handling chatWebhookUrl on mount', e);
+    }
+  }, [user, createSessionWithWebhook]);
 
   // Effect for loading messages when the session changes
   useEffect(() => {
@@ -479,21 +571,38 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
           <div className="sidebar-navigation">
             <button
               className={`nav-tab ${activeTab === 'chat' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('chat'); setShowSidebar(false); }}
+              onClick={async () => {
+                setActiveTab('chat');
+                // Plan Your Day uses the static webhook
+                await createSessionWithWebhook(N8N_WEBHOOK_URL, 'chat');
+                setShowSidebar(false);
+              }}
             >
               <span className="nav-tab-icon small-icon">📅</span>
               Plan Your Day
             </button>
             <button
               className={`nav-tab ${activeTab === 'university_guide' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('university_guide'); setShowSidebar(false); }}
+              onClick={async () => {
+                setActiveTab('university_guide');
+                // University guide uses its own webhook
+                const uniWebhook = 'https://n8n.zentraid.com/webhook/university_Guide';
+                await createSessionWithWebhook(uniWebhook, 'university_guide');
+                setShowSidebar(false);
+              }}
             >
               <span className="nav-tab-icon small-icon">🎓</span>
               University Guide
             </button>
             <button
               className={`nav-tab ${activeTab === 'study_guide' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('study_guide'); setShowSidebar(false); }}
+              onClick={async () => {
+                setActiveTab('study_guide');
+                // Study guide may have a dynamic webhook provided by n8n; prefer stored chatWebhookUrl
+                const studyWebhook = localStorage.getItem('chatWebhookUrl') || N8N_WEBHOOK_URL;
+                await createSessionWithWebhook(studyWebhook, 'study_guide');
+                setShowSidebar(false);
+              }}
             >
               <span className="nav-tab-icon small-icon">📚</span>
               Study Guide
@@ -529,10 +638,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
           </div>
 
           {/* New Chat Button */}
-          <button onClick={createNewSession} className="new-chat-button">
-            <span className="new-chat-button-icon">+</span>
-            New Chat
-          </button>
+          {/* New Chat button removed: conversations are created automatically when switching tabs or via notifications */}
         </div>
 
         {/* Conversation List */}
@@ -607,6 +713,9 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div className="status-indicator"></div>
               <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Online</span>
+            </div>
+            <div style={{ marginLeft: '12px' }}>
+              <NotificationBell />
             </div>
             {currentSession && (
               <button onClick={handleDeleteSession} className="delete-button" title="Delete conversation">
