@@ -1,0 +1,44 @@
+# Frontend Dependencies Reference
+# This is a reference file. The actual dependencies are managed in package.json
+# To install all dependencies, run: npm install
+
+# Core Dependencies
+react
+react-dom
+react-scripts
+react-router-dom
+
+# UI & Styling
+tailwindcss
+postcss
+autoprefixer
+
+# Firebase
+firebase
+
+# API & Communication
+axios
+socket.io-client
+
+# Supabase
+@supabase/supabase-js
+
+# Other utilities
+web-vitals
+
+# Development Dependencies
+# These are installed automatically with create-react-app
+# - webpack
+# - babel
+# - eslint
+# - jest
+
+# Installation Instructions:
+# 1. Make sure you have Node.js installed (v14 or higher)
+# 2. Navigate to the frontend directory: cd frontend
+# 3. Install all dependencies: npm install
+# 4. Start the development server: npm start
+
+# Note: If you encounter "Module not found" errors, install the specific package:
+# npm install <package-name>
+# Example: npm install react-router-dom

@@ -38,8 +38,8 @@ const MarkdownRenderer = ({ content }) => {
       }
       
       // Handle bullet points (*, -, •)
-      if (line.match(/^[\*\-\•]\s+/)) {
-        const bulletText = line.replace(/^[\*\-\•]\s+/, '');
+      if (line.match(/^[*\-•]\s+/)) {
+        const bulletText = line.replace(/^[*\-•]\s+/, '');
         elements.push(
           <div key={index} className="flex items-start space-x-2 ml-2 my-1">
             <span className="text-blue-600 dark:text-blue-400 mt-1">•</span>

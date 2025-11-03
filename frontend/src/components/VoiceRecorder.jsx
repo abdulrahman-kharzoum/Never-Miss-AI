@@ -47,7 +47,7 @@ const VoiceRecorder = ({ onRecordingComplete, disabled }) => {
   const stopRecording = async () => {
     if (isRecording) {
       try {
-        const [buffer, blob] = await recorderRef.current.stop().getMp3();
+        const [buffer] = await recorderRef.current.stop().getMp3();
         const file = new File(buffer, 'voice-message.mp3', {
           type: 'audio/mpeg',
           lastModified: Date.now()

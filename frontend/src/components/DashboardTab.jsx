@@ -13,19 +13,20 @@ const DashboardTab = ({ user, onSwitchToChat }) => {
 
   useEffect(() => {
     loadDashboardData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const loadDashboardData = async () => {
     try {
       // Get session count
-      const { data: sessions, error: sessionsError } = await supabase
+      const { data: sessions } = await supabase
         .from('chat_sessions')
         .select('*')
         .eq('user_id', user.uid)
         .order('updated_at', { ascending: false });
       
       // Get message stats
-      const { data: messages, error: messagesError } = await supabase
+      const { data: messages } = await supabase
         .from('chat_messages')
         .select('*')
         .eq('user_id', user.uid);
