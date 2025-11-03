@@ -17,6 +17,7 @@ const StudyGuideTab = () => {
   const [files, setFiles] = useState([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef(null);
+  const fileListRef = useRef(null);
   const { theme } = useTheme();
   const { addNotification } = useNotification();
 
@@ -91,6 +92,17 @@ const StudyGuideTab = () => {
     }));
 
     setFiles(prev => [...prev, ...uploadedFiles]);
+
+    // Auto-scroll to file list with smooth animation
+    setTimeout(() => {
+      if (fileListRef.current) {
+        fileListRef.current.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+      }
+    }, 100);
 
     // Simulate file preparation progress (reading file, validating, etc.)
     uploadedFiles.forEach((fileData, index) => {
@@ -214,7 +226,7 @@ const StudyGuideTab = () => {
     <div className={`min-h-screen h-full overflow-y-auto p-6 ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gradient-to-br from-indigo-50 via-white to-blue-50'}`}>
       <div className="max-w-5xl mx-auto">
         {/* Header */}
-        <div className="mb-10 text-center">
+        <div className="mt-16 mb-10 text-center">
           <h1 className={`text-4xl font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             📚 Study Guide Builder
           </h1>
@@ -282,23 +294,31 @@ const StudyGuideTab = () => {
 
         {/* File Cards - Dribbble Design Inspired */}
         {files.length > 0 && (
-          <div className="mt-8 space-y-4">
+          <div ref={fileListRef} className="mt-8 space-y-4">
             {files.map((fileData) => (
               <div 
                 key={fileData.id} 
                 className={`rounded-2xl p-5 transition-all duration-300 ${
                   theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-                } shadow-lg hover:shadow-xl`}
+                } shadow-lg hover:shadow-xl ${
+                  (fileData.status === 'preparing' || fileData.status === 'uploading') 
+                    ? 'animate-pulse ring-2 ring-indigo-500/50' 
+                    : ''
+                }`}
               >
                 <div className="flex items-center justify-between mb-4">
                   {/* Left: Icon + File Info */}
                   <div className="flex items-center space-x-4 flex-1 min-w-0">
                     {/* File Icon */}
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
                       fileData.status === 'error' 
-                        ? (theme === 'dark' ? 'bg-red-500/20' : 'bg-red-50')
+                        ? (theme === 'dark' ? 'bg-red-500/20 animate-shake' : 'bg-red-50 animate-shake')
                         : fileData.status === 'completed'
-                        ? (theme === 'dark' ? 'bg-green-500/20' : 'bg-green-50')
+                        ? (theme === 'dark' ? 'bg-green-500/20 scale-110' : 'bg-green-50 scale-110')
+                        : (fileData.status === 'preparing' || fileData.status === 'uploading')
+                        ? (fileData.file.type.includes('pdf')
+                          ? (theme === 'dark' ? 'bg-indigo-500/20 animate-bounce' : 'bg-indigo-50 animate-bounce')
+                          : (theme === 'dark' ? 'bg-blue-500/20 animate-bounce' : 'bg-blue-50 animate-bounce'))
                         : fileData.file.type.includes('pdf')
                         ? (theme === 'dark' ? 'bg-indigo-500/20' : 'bg-indigo-50')
                         : (theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-50')
@@ -349,9 +369,39 @@ const StudyGuideTab = () => {
                     )}
 
                     {(fileData.status === 'preparing' || fileData.status === 'uploading') && (
-                      <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        {fileData.progress}%
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <div className="relative w-10 h-10">
+                          {/* Spinning ring */}
+                          <svg className="w-10 h-10 animate-spin" viewBox="0 0 50 50">
+                            <circle 
+                              className={`${theme === 'dark' ? 'stroke-gray-700' : 'stroke-gray-200'}`}
+                              cx="25" cy="25" r="20" 
+                              fill="none" 
+                              strokeWidth="4"
+                            />
+                            <circle 
+                              className={`${
+                                fileData.status === 'preparing' 
+                                  ? 'stroke-indigo-500' 
+                                  : 'stroke-purple-500'
+                              }`}
+                              cx="25" cy="25" r="20" 
+                              fill="none" 
+                              strokeWidth="4"
+                              strokeDasharray="125.6"
+                              strokeDashoffset={125.6 - (125.6 * fileData.progress) / 100}
+                              strokeLinecap="round"
+                              transform="rotate(-90 25 25)"
+                            />
+                          </svg>
+                          {/* Percentage in center */}
+                          <span className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${
+                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                          }`}>
+                            {fileData.progress}
+                          </span>
+                        </div>
+                      </div>
                     )}
 
                     {/* Delete Button */}
@@ -375,13 +425,25 @@ const StudyGuideTab = () => {
 
                 {/* Progress Bar */}
                 {(fileData.status === 'preparing' || fileData.status === 'uploading') && (
-                  <div className={`h-2 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                  <div className={`h-2.5 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'} relative`}>
                     <div 
-                      className={`h-full transition-all duration-300 ease-out ${
+                      className={`h-full transition-all duration-300 ease-out relative ${
                         fileData.status === 'preparing' 
-                          ? 'bg-gradient-to-r from-indigo-500 to-blue-500'
-                          : 'bg-gradient-to-r from-indigo-500 to-purple-500'
+                          ? 'bg-gradient-to-r from-indigo-500 via-blue-500 to-indigo-600'
+                          : 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500'
                       }`}
+                      style={{ width: `${fileData.progress}%` }}
+                    >
+                      {/* Animated shimmer effect */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shimmer"></div>
+                    </div>
+                    {/* Pulsing glow effect */}
+                    <div 
+                      className={`absolute top-0 left-0 h-full transition-all duration-300 blur-sm ${
+                        fileData.status === 'preparing' 
+                          ? 'bg-gradient-to-r from-indigo-400 to-blue-400'
+                          : 'bg-gradient-to-r from-indigo-400 to-purple-400'
+                      } opacity-50 animate-pulse`}
                       style={{ width: `${fileData.progress}%` }}
                     />
                   </div>
