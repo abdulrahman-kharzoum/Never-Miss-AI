@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../utils/supabaseClient';
-import { sendMessageToN8N, sendAudioToN8N } from '../utils/api';
-import { N8N_WEBHOOK_URL } from '../utils/api';
+import { sendMessageToN8N, sendAudioToN8N, N8N_WEBHOOK_URL, PLAN_WEBHOOK, STUDY_GUIDE_WEBHOOK, UNIVERSITY_GUIDE_WEBHOOK } from '../utils/api';
 import { tokenManager } from '../utils/tokenManager';
 import VoiceRecorder from './VoiceRecorder';
 import AudioPlayer from './AudioPlayer';
@@ -36,9 +35,22 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
     return createSessionWithWebhook(N8N_WEBHOOK_URL, 'chat');
   }, [user]);
 
+  const getSessionWebhook = (session) => {
+    try {
+      if (!session) return N8N_WEBHOOK_URL;
+      if (session.webhook_url) return session.webhook_url;
+      const stored = localStorage.getItem(`session_webhook_${session.session_id}`);
+      if (stored) return stored;
+    } catch (e) {
+      // ignore
+    }
+    return N8N_WEBHOOK_URL;
+  };
+
   // Create a new session and associate it with a webhook URL. We persist webhook mapping in localStorage
   const createSessionWithWebhook = useCallback(async (webhookUrl, source = 'tab') => {
     try {
+      console.log('Creating session with webhook:', webhookUrl, 'source:', source);
       const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       const insertPayload = {
@@ -124,6 +136,34 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
   const loadSessions = useCallback(async () => {
     try {
+      // If a webhook was supplied (via URL param or localStorage) prefer creating a session
+      // with that webhook before falling back to loading existing sessions.
+      try {
+        const params = new URLSearchParams(window.location.search || '');
+        const webhookFromUrl = params.get('webhook');
+        const webhookFromStorage = localStorage.getItem('chatWebhookUrl');
+        const webhookToUse = webhookFromUrl || webhookFromStorage;
+        if (webhookToUse) {
+          // Create session for the webhook and remove the transient keys.
+          // Infer source from the webhook so session titles and metadata are correct.
+          const inferSourceFromWebhook = (w) => {
+            if (!w) return 'tab';
+            if (w === STUDY_GUIDE_WEBHOOK) return 'study_guide';
+            if (w === UNIVERSITY_GUIDE_WEBHOOK) return 'university_guide';
+            if (w === PLAN_WEBHOOK || w === N8N_WEBHOOK_URL) return 'chat';
+            // fallback
+            return 'tab';
+          };
+          const source = inferSourceFromWebhook(webhookToUse);
+          await createSessionWithWebhook(webhookToUse, source);
+          try { params.delete('webhook'); window.history.replaceState({}, '', window.location.pathname + (params.toString() ? `?${params.toString()}` : '')); } catch (e) { /* ignore */ }
+          try { localStorage.removeItem('chatWebhookUrl'); } catch (e) { /* ignore */ }
+          // After creating session, load sessions so UI is populated
+        }
+      } catch (e) {
+        // ignore URL/localStorage parsing errors
+      }
+
       const { data, error } = await supabase
         .from('chat_sessions')
         .select('*')
@@ -137,8 +177,17 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
       if (data && data.length > 0) {
         setCurrentSession(data[0]);
       } else {
-        createNewSession();
+        // If no sessions exist and no webhook was used above, create a default session
+        await createNewSession();
       }
+      // Persist any webhook_url values into localStorage for later message routing
+      try {
+        (data || []).forEach((s) => {
+          if (s && s.session_id && s.webhook_url) {
+            try { localStorage.setItem(`session_webhook_${s.session_id}`, s.webhook_url); } catch (e) { /* ignore */ }
+          }
+        });
+      } catch (e) { /* ignore */ }
     } catch (error) {
       console.error('Error loading sessions:', error);
     }
@@ -158,7 +207,14 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
       const params = new URLSearchParams(window.location.search || '');
       const webhookFromUrl = params.get('webhook');
       if (webhookFromUrl) {
-        createSessionWithWebhook(webhookFromUrl, 'study_guide');
+        const inferSourceFromWebhook = (w) => {
+          if (!w) return 'tab';
+          if (w === STUDY_GUIDE_WEBHOOK) return 'study_guide';
+          if (w === UNIVERSITY_GUIDE_WEBHOOK) return 'university_guide';
+          if (w === PLAN_WEBHOOK || w === N8N_WEBHOOK_URL) return 'chat';
+          return 'tab';
+        };
+        createSessionWithWebhook(webhookFromUrl, inferSourceFromWebhook(webhookFromUrl));
         // Remove the webhook query param to avoid duplicate session creation on reload
         params.delete('webhook');
         const cleaned = params.toString();
@@ -168,7 +224,14 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         const webhook = localStorage.getItem('chatWebhookUrl');
         if (webhook) {
           // create a session associated with this webhook
-          createSessionWithWebhook(webhook, 'study_guide');
+          const inferSourceFromWebhook = (w) => {
+            if (!w) return 'tab';
+            if (w === STUDY_GUIDE_WEBHOOK) return 'study_guide';
+            if (w === UNIVERSITY_GUIDE_WEBHOOK) return 'university_guide';
+            if (w === PLAN_WEBHOOK || w === N8N_WEBHOOK_URL) return 'chat';
+            return 'tab';
+          };
+          createSessionWithWebhook(webhook, inferSourceFromWebhook(webhook));
           // remove the temporary key so it doesn't create duplicates
           localStorage.removeItem('chatWebhookUrl');
         }
@@ -208,6 +271,33 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         },
         (payload) => {
           console.log('Real-time message received:', payload.new);
+
+          // If the incoming message contains a webhook_url (some n8n flows include it per-message),
+          // persist it for the session so outgoing messages route correctly.
+          try {
+            const maybeWebhook = payload.new?.webhook_url || payload.new?.webhook || payload.new?.data?.webhook || payload.new?.metadata?.webhook_url || payload.new?.data?.webhook_url;
+            if (maybeWebhook) {
+              try { localStorage.setItem(`session_webhook_${sessionId}`, maybeWebhook); } catch (e) { /* ignore */ }
+              // Try to persist to chat_sessions.webhook_url if column exists
+              (async () => {
+                try {
+                  const { error: upErr } = await supabase
+                    .from('chat_sessions')
+                    .update({ webhook_url: maybeWebhook })
+                    .eq('session_id', sessionId);
+                  if (upErr && upErr.message && upErr.message.includes('column')) {
+                    // ignore missing column
+                  } else if (upErr) {
+                    console.warn('Failed to update chat_sessions.webhook_url:', upErr);
+                  }
+                } catch (e) {
+                  // ignore
+                }
+              })();
+            }
+          } catch (e) {
+            // ignore
+          }
 
           // We only care about messages from the AI, as we handle user messages optimistically
           if (payload.new.sender === 'ai') {
@@ -261,6 +351,28 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
       if (error) throw error;
       setMessages(data || []);
+
+      // Inspect messages for a webhook_url (some flows embed it per-message). Persist mapping.
+      try {
+        const msgs = data || [];
+        for (const m of msgs) {
+          const maybe = m?.webhook_url || m?.webhook || m?.data?.webhook || m?.metadata?.webhook_url || m?.data?.webhook_url;
+          if (maybe) {
+            try { localStorage.setItem(`session_webhook_${sessionId}`, maybe); } catch (e) { /* ignore */ }
+            // Attempt to persist into chat_sessions table
+            try {
+              const { error: upErr } = await supabase
+                .from('chat_sessions')
+                .update({ webhook_url: maybe })
+                .eq('session_id', sessionId);
+              if (upErr && upErr.message && upErr.message.includes('column')) {
+                // ignore missing column
+              }
+            } catch (e) { /* ignore */ }
+            break; // first found is enough
+          }
+        }
+      } catch (e) { /* ignore */ }
     } catch (error) {
       console.error('Error loading messages:', error);
     } finally {
@@ -322,16 +434,33 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
       const aiTimestamp = new Date().toISOString();
 
       // Asynchronously send to n8n
-      sendMessageToN8N(
-        currentSession.session_id,
-        userMessage,
-        accessToken,
-        refreshToken,
-        resolvedUserName,
-        resolvedUserEmail,
-        resolvedUserId,
-        aiTimestamp // Pass the timestamp to the API call
-      );
+      try {
+        const sessionWebhook = getSessionWebhook(currentSession);
+        sendMessageToN8N(
+          currentSession.session_id,
+          userMessage,
+          accessToken,
+          refreshToken,
+          resolvedUserName,
+          resolvedUserEmail,
+          resolvedUserId,
+          aiTimestamp, // Pass the timestamp to the API call
+          sessionWebhook
+        );
+      } catch (e) {
+        console.error('Failed to send message to N8N with session webhook', e);
+        // fallback to default
+        sendMessageToN8N(
+          currentSession.session_id,
+          userMessage,
+          accessToken,
+          refreshToken,
+          resolvedUserName,
+          resolvedUserEmail,
+          resolvedUserId,
+          aiTimestamp
+        );
+      }
 
       // Update session metadata
       if (currentSession.title === 'New Conversation' && messages.length === 1) {
@@ -440,16 +569,32 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         const aiTimestamp = new Date().toISOString();
 
         // Asynchronously send to n8n
-        sendAudioToN8N(
-          currentSession.session_id,
-          base64AudioForN8N,
-          accessToken,
-          refreshToken,
-          resolvedUserName,
-          resolvedUserEmail,
-          resolvedUserId,
-          aiTimestamp // Pass the timestamp to the API call
-        );
+          try {
+            const sessionWebhook = getSessionWebhook(currentSession);
+            sendAudioToN8N(
+              currentSession.session_id,
+              base64AudioForN8N,
+              accessToken,
+              refreshToken,
+              resolvedUserName,
+              resolvedUserEmail,
+              resolvedUserId,
+              aiTimestamp,
+              sessionWebhook
+            );
+          } catch (e) {
+            console.error('Failed to send audio to N8N with session webhook', e);
+            sendAudioToN8N(
+              currentSession.session_id,
+              base64AudioForN8N,
+              accessToken,
+              refreshToken,
+              resolvedUserName,
+              resolvedUserEmail,
+              resolvedUserId,
+              aiTimestamp
+            );
+          }
         
         await supabase
           .from('chat_sessions')

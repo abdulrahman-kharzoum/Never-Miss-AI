@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../utils/supabaseClient';
-import { sendMessageToN8N, sendAudioToN8N } from '../utils/api';
+import { sendMessageToN8N, sendAudioToN8N, N8N_WEBHOOK_URL } from '../utils/api';
 import { tokenManager } from '../utils/tokenManager';
 import VoiceRecorder from './VoiceRecorder';
 import AudioPlayer from './AudioPlayer';
@@ -35,6 +35,18 @@ const ChatInterface = ({ user, onSignOut }) => {
       loadMessages(currentSession.session_id);
     }
   }, [currentSession]);
+
+  const getSessionWebhook = (session) => {
+    try {
+      if (!session) return N8N_WEBHOOK_URL;
+      if (session.webhook_url) return session.webhook_url;
+      const stored = localStorage.getItem(`session_webhook_${session.session_id}`);
+      if (stored) return stored;
+    } catch (e) {
+      // ignore
+    }
+    return N8N_WEBHOOK_URL;
+  };
 
   useEffect(() => {
     scrollToBottom();
@@ -104,6 +116,27 @@ const ChatInterface = ({ user, onSignOut }) => {
 
       if (error) throw error;
       setMessages(data || []);
+
+      // Persist webhook found in messages (if any)
+      try {
+        const msgs = data || [];
+        for (const m of msgs) {
+          const maybe = m?.webhook_url || m?.webhook || m?.data?.webhook || m?.metadata?.webhook_url || m?.data?.webhook_url;
+          if (maybe) {
+            try { localStorage.setItem(`session_webhook_${sessionId}`, maybe); } catch (e) { /* ignore */ }
+            try {
+              const { error: upErr } = await supabase
+                .from('chat_sessions')
+                .update({ webhook_url: maybe })
+                .eq('session_id', sessionId);
+              if (upErr && upErr.message && upErr.message.includes('column')) {
+                // ignore missing column
+              }
+            } catch (e) { /* ignore */ }
+            break;
+          }
+        }
+      } catch (e) { /* ignore */ }
     } catch (error) {
       console.error('Error loading messages:', error);
     } finally {
@@ -144,6 +177,7 @@ const ChatInterface = ({ user, onSignOut }) => {
       console.log('  Refresh Token:', refreshToken ? refreshToken.substring(0, 20) + '...' : 'EMPTY');
       
       // Send to N8N with tokens
+      const sessionWebhook = getSessionWebhook(currentSession);
       const n8nResponse = await sendMessageToN8N(
         currentSession.session_id,
         userMessage,
@@ -151,7 +185,9 @@ const ChatInterface = ({ user, onSignOut }) => {
         refreshToken,
         resolvedUserName,
         resolvedUserEmail,
-        resolvedUserId
+        resolvedUserId,
+        undefined,
+        sessionWebhook
       );
       
       // Parse N8N response - it returns an array with output field
@@ -264,6 +300,7 @@ const ChatInterface = ({ user, onSignOut }) => {
         const base64AudioForN8N = base64AudioDataUrl.split(',')[1];
 
         // Send audio to N8N webhook
+        const sessionWebhook = getSessionWebhook(currentSession);
         const n8nResponseText = await sendAudioToN8N(
           currentSession.session_id,
           base64AudioForN8N, // Send only the base64 part
@@ -271,7 +308,9 @@ const ChatInterface = ({ user, onSignOut }) => {
           refreshToken,
           resolvedUserName,
           resolvedUserEmail,
-          resolvedUserId
+          resolvedUserId,
+          undefined,
+          sessionWebhook
         );
         
         let aiResponseContent;
