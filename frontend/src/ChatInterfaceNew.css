@@ -111,7 +111,13 @@
 /* Sidebar Header */
 .sidebar-header {
   padding: 24px 20px;
+  /* keep default subtle divider in dark mode */
   border-bottom: 1px solid var(--border-color);
+}
+
+/* In light theme make the header divider warmer and slightly more subtle to match the design */
+[data-theme="light"] .sidebar-header {
+  border-bottom-color: rgba(248, 122, 20, 0.08);
 }
 
 .app-title {
@@ -149,7 +155,8 @@
 /* Navigation Tabs in Sidebar */
 .sidebar-navigation {
   padding: 12px;
-  border-bottom: 1px solid var(--border-color);
+  /* Removed duplicate border to avoid double-line in the drawer header area */
+  border-bottom: none;
 }
 
 .nav-tab {
@@ -261,33 +268,7 @@
 }
 
 /* New Chat Button */
-.new-chat-button {
-  background: var(--message-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 12px 20px;
-  color: var(--text-primary);
-  font-weight: 600;
-  width: 100%;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-size: 15px;
-}
-
-.new-chat-button:hover {
-  background: var(--accent-color-2);
-  box-shadow: 0 4px 12px rgba(111, 92, 153, 0.3);
-  transform: translateY(-1px);
-}
-
-.new-chat-button-icon {
-  font-size: 18px;
-  font-weight: bold;
-}
+/* .new-chat-button styles removed (drawer button no longer used) */
 
 /* Conversation List */
 .conversation-list {

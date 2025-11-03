@@ -12,6 +12,7 @@ import AboutTab from './AboutTab';
 import StudyGuideTab from './StudyGuideTab';
 import NotificationBell from './NotificationBell';
 import '../ChatInterfaceNew.css';
+import { useTheme } from '../context/ThemeContext';
 
 const ChatInterfaceNew = ({ user, onSignOut }) => {
   const [activeTab, setActiveTab] = useState('chat');
@@ -31,10 +32,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
   const resolvedUserEmail = user?.email || '';
   const resolvedUserId = user?.uid || '';
 
-  const createNewSession = useCallback(async () => {
-    return createSessionWithWebhook(N8N_WEBHOOK_URL, 'chat');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const { theme } = useTheme();
 
   const getSessionWebhook = (session) => {
     try {
@@ -76,6 +74,8 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         .select()
         .single();
 
+      let createdSession = null;
+      
       if (error) {
         // If insertion fails because of unknown column, retry without webhook_url
         if (error.message && error.message.includes('column')) {
@@ -87,13 +87,14 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
           if (retryErr) throw retryErr;
           setSessions((prev) => [retryData, ...prev]);
           setCurrentSession(retryData);
-          // try to update metadata without webhook column won't be possible; skip
+          createdSession = retryData;
         } else {
           throw error;
         }
       } else {
         setSessions((prevSessions) => [data, ...prevSessions]);
         setCurrentSession(data);
+        createdSession = data;
       }
 
       setMessages([]);
@@ -128,7 +129,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         console.debug('Ignored error updating webhook metadata:', e);
       }
 
-      return sessionId;
+      return createdSession;
     } catch (error) {
       console.error('Error creating session with webhook:', error);
       return null;
@@ -137,34 +138,38 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
   const loadSessions = useCallback(async () => {
     try {
-      // If a webhook was supplied (via URL param or localStorage) prefer creating a session
-      // with that webhook before falling back to loading existing sessions.
+      // Check for webhook from file upload (Study Guide) and create session only for that case
       try {
         const params = new URLSearchParams(window.location.search || '');
         const webhookFromUrl = params.get('webhook');
         const webhookFromStorage = localStorage.getItem('chatWebhookUrl');
         const webhookToUse = webhookFromUrl || webhookFromStorage;
+        
         if (webhookToUse) {
-          // Create session for the webhook and remove the transient keys.
-          // Infer source from the webhook so session titles and metadata are correct.
+          // Only create session if webhook is from Study Guide (file upload)
           const inferSourceFromWebhook = (w) => {
             if (!w) return 'tab';
             if (w === STUDY_GUIDE_WEBHOOK) return 'study_guide';
             if (w === UNIVERSITY_GUIDE_WEBHOOK) return 'university_guide';
             if (w === PLAN_WEBHOOK || w === N8N_WEBHOOK_URL) return 'chat';
-            // fallback
             return 'tab';
           };
           const source = inferSourceFromWebhook(webhookToUse);
-          await createSessionWithWebhook(webhookToUse, source);
+          
+          // Only create session for study_guide (file upload) automatically
+          if (source === 'study_guide') {
+            await createSessionWithWebhook(webhookToUse, source);
+          }
+          
+          // Clean up the transient keys
           try { params.delete('webhook'); window.history.replaceState({}, '', window.location.pathname + (params.toString() ? `?${params.toString()}` : '')); } catch (e) { /* ignore */ }
           try { localStorage.removeItem('chatWebhookUrl'); } catch (e) { /* ignore */ }
-          // After creating session, load sessions so UI is populated
         }
       } catch (e) {
         // ignore URL/localStorage parsing errors
       }
 
+      // Load all existing sessions
       const { data, error } = await supabase
         .from('chat_sessions')
         .select('*')
@@ -175,12 +180,10 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
       setSessions(data || []);
       
-      if (data && data.length > 0) {
-        setCurrentSession(data[0]);
-      } else {
-        // If no sessions exist and no webhook was used above, create a default session
-        await createNewSession();
-      }
+      // Don't set currentSession or create default session
+      // Let users start fresh - session will be created when they send first message
+      setCurrentSession(null);
+      
       // Persist any webhook_url values into localStorage for later message routing
       try {
         (data || []).forEach((s) => {
@@ -192,7 +195,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
     } catch (error) {
       console.error('Error loading sessions:', error);
     }
-  }, [user, createNewSession]);
+  }, [user, createSessionWithWebhook]);
 
   useEffect(() => {
     if (user) {
@@ -200,47 +203,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
     }
   }, [user, loadSessions]);
 
-  // On mount, if a webhook URL was provided (e.g. from notification), create a session automatically
-  useEffect(() => {
-    if (!user) return;
-    try {
-      // Prefer webhook supplied via URL param (e.g. /chat?webhook=...), then fallback to localStorage
-      const params = new URLSearchParams(window.location.search || '');
-      const webhookFromUrl = params.get('webhook');
-      if (webhookFromUrl) {
-        const inferSourceFromWebhook = (w) => {
-          if (!w) return 'tab';
-          if (w === STUDY_GUIDE_WEBHOOK) return 'study_guide';
-          if (w === UNIVERSITY_GUIDE_WEBHOOK) return 'university_guide';
-          if (w === PLAN_WEBHOOK || w === N8N_WEBHOOK_URL) return 'chat';
-          return 'tab';
-        };
-        createSessionWithWebhook(webhookFromUrl, inferSourceFromWebhook(webhookFromUrl));
-        // Remove the webhook query param to avoid duplicate session creation on reload
-        params.delete('webhook');
-        const cleaned = params.toString();
-        const newUrl = window.location.pathname + (cleaned ? `?${cleaned}` : '');
-        window.history.replaceState({}, '', newUrl);
-      } else {
-        const webhook = localStorage.getItem('chatWebhookUrl');
-        if (webhook) {
-          // create a session associated with this webhook
-          const inferSourceFromWebhook = (w) => {
-            if (!w) return 'tab';
-            if (w === STUDY_GUIDE_WEBHOOK) return 'study_guide';
-            if (w === UNIVERSITY_GUIDE_WEBHOOK) return 'university_guide';
-            if (w === PLAN_WEBHOOK || w === N8N_WEBHOOK_URL) return 'chat';
-            return 'tab';
-          };
-          createSessionWithWebhook(webhook, inferSourceFromWebhook(webhook));
-          // remove the temporary key so it doesn't create duplicates
-          localStorage.removeItem('chatWebhookUrl');
-        }
-      }
-    } catch (e) {
-      console.error('Error handling chatWebhookUrl on mount', e);
-    }
-  }, [user, createSessionWithWebhook]);
+  // Note: Webhook handling is done inside loadSessions() to avoid duplicate session creation
 
   // Effect for loading messages when the session changes
   useEffect(() => {
@@ -382,14 +345,41 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
   };
 
   const sendMessage = async () => {
-    if (!inputMessage.trim() || !currentSession || sending) return;
+    if (!inputMessage.trim() || sending) return;
+
+    // If no session exists, create one based on the active tab
+    let sessionToUse = currentSession;
+    if (!sessionToUse) {
+      let webhookUrl = N8N_WEBHOOK_URL;
+      let source = 'chat';
+      
+      if (activeTab === 'university_guide') {
+        webhookUrl = UNIVERSITY_GUIDE_WEBHOOK;
+        source = 'university_guide';
+      } else if (activeTab === 'study_guide') {
+        webhookUrl = localStorage.getItem('chatWebhookUrl') || STUDY_GUIDE_WEBHOOK;
+        source = 'study_guide';
+      } else if (activeTab === 'chat') {
+        webhookUrl = PLAN_WEBHOOK || N8N_WEBHOOK_URL;
+        source = 'chat';
+      }
+      
+      const newSession = await createSessionWithWebhook(webhookUrl, source);
+      sessionToUse = newSession || currentSession;
+      
+      // If still no session, return
+      if (!sessionToUse) {
+        setSending(false);
+        return;
+      }
+    }
 
     const userMessage = inputMessage.trim();
     setInputMessage('');
     setSending(true); // Show loading indicator
 
     const messageObject = {
-      session_id: currentSession.session_id,
+      session_id: sessionToUse.session_id,
       user_id: user.uid,
       message_type: 'text',
       content: userMessage,
@@ -436,9 +426,9 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
       // Asynchronously send to n8n
       try {
-        const sessionWebhook = getSessionWebhook(currentSession);
+        const sessionWebhook = getSessionWebhook(sessionToUse);
         sendMessageToN8N(
-          currentSession.session_id,
+          sessionToUse.session_id,
           userMessage,
           accessToken,
           refreshToken,
@@ -452,7 +442,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         console.error('Failed to send message to N8N with session webhook', e);
         // fallback to default
         sendMessageToN8N(
-          currentSession.session_id,
+          sessionToUse.session_id,
           userMessage,
           accessToken,
           refreshToken,
@@ -501,7 +491,11 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
     } catch (error) {
       console.error('Error sending message:', error);
-      alert('Failed to send message. Please try again.');
+      
+      // Show user-friendly error message
+      const errorMessage = error.message || 'Failed to send message. Please try again.';
+      alert(`❌ Error: ${errorMessage}\n\nPlease check:\n1. N8N service is running\n2. Webhook URL is correct\n3. Network connection is stable`);
+      
       setSending(false); // Stop loading on error
     } finally {
       if (textareaRef.current) {
@@ -717,10 +711,11 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
           <div className="sidebar-navigation">
             <button
               className={`nav-tab ${activeTab === 'chat' ? 'active' : ''}`}
-              onClick={async () => {
+              onClick={() => {
                 setActiveTab('chat');
-                // Plan Your Day uses the static webhook
-                await createSessionWithWebhook(N8N_WEBHOOK_URL, 'chat');
+                // Clear current session so tab starts fresh
+                setCurrentSession(null);
+                setMessages([]);
                 setShowSidebar(false);
               }}
             >
@@ -729,11 +724,11 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
             </button>
             <button
               className={`nav-tab ${activeTab === 'university_guide' ? 'active' : ''}`}
-              onClick={async () => {
+              onClick={() => {
                 setActiveTab('university_guide');
-                // University guide uses its own webhook
-                const uniWebhook = 'https://n8n.zentraid.com/webhook/university_Guide';
-                await createSessionWithWebhook(uniWebhook, 'university_guide');
+                // Clear current session so tab starts fresh
+                setCurrentSession(null);
+                setMessages([]);
                 setShowSidebar(false);
               }}
             >
@@ -742,11 +737,11 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
             </button>
             <button
               className={`nav-tab ${activeTab === 'study_guide' ? 'active' : ''}`}
-              onClick={async () => {
+              onClick={() => {
                 setActiveTab('study_guide');
-                // Study guide may have a dynamic webhook provided by n8n; prefer stored chatWebhookUrl
-                const studyWebhook = localStorage.getItem('chatWebhookUrl') || N8N_WEBHOOK_URL;
-                await createSessionWithWebhook(studyWebhook, 'study_guide');
+                // Clear current session so tab starts fresh
+                setCurrentSession(null);
+                setMessages([]);
                 setShowSidebar(false);
               }}
             >
@@ -783,21 +778,32 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
             </button>
           </div>
 
-          {/* New Chat Button */}
-          {/* New Chat button removed: conversations are created automatically when switching tabs or via notifications */}
+          {/* New Chat removed from drawer — use header button instead */}
         </div>
 
         {/* Conversation List */}
         <div className="conversation-list">
-          {sessions.map((session) => (
-            <div
-              key={session.id}
-              onClick={() => { setCurrentSession(session); setShowSidebar(false); }}
-              className={`conversation-item ${currentSession?.id === session.id ? 'active' : ''}`}
-            >
-              <div className="conversation-title">{session.title}</div>
-            </div>
-          ))}
+          {sessions
+            .filter((session) => {
+              // Filter sessions based on active tab
+              if (activeTab === 'chat') {
+                return session.title === 'New Conversation' || session.title === 'Plan Your Day';
+              } else if (activeTab === 'university_guide') {
+                return session.title === 'University Guide';
+              } else if (activeTab === 'study_guide') {
+                return session.title === 'Study Guide Chat';
+              }
+              return true; // Show all for other tabs
+            })
+            .map((session) => (
+              <div
+                key={session.id}
+                onClick={() => { setCurrentSession(session); setShowSidebar(false); }}
+                className={`conversation-item ${currentSession?.id === session.id ? 'active' : ''}`}
+              >
+                <div className="conversation-title">{session.title}</div>
+              </div>
+            ))}
         </div>
       </>
     );
@@ -856,6 +862,56 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
             </div>
           </div>
           <div className="chat-header-right">
+            {/* New Chat Button */}
+            <button
+              onClick={async () => {
+                // Create new session based on current active tab
+                let webhookUrl = N8N_WEBHOOK_URL;
+                let source = 'chat';
+                
+                if (activeTab === 'university_guide') {
+                  webhookUrl = UNIVERSITY_GUIDE_WEBHOOK;
+                  source = 'university_guide';
+                } else if (activeTab === 'study_guide') {
+                  webhookUrl = STUDY_GUIDE_WEBHOOK;
+                  source = 'study_guide';
+                } else if (activeTab === 'chat') {
+                  webhookUrl = PLAN_WEBHOOK || N8N_WEBHOOK_URL;
+                  source = 'chat';
+                }
+                
+                await createSessionWithWebhook(webhookUrl, source);
+              }}
+              className="new-chat-header-button"
+              style={{
+                padding: '8px 16px',
+                backgroundColor: theme === 'light' ? '#000' : 'var(--primary-color)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease',
+                marginRight: '12px'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = theme === 'light' ? '#111' : 'var(--primary-hover)';
+                e.target.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = theme === 'light' ? '#000' : 'var(--primary-color)';
+                e.target.style.transform = 'scale(1)';
+              }}
+              title="Start a new conversation"
+            >
+              <span style={{ fontSize: '16px' }}>➕</span>
+              New Chat
+            </button>
+            
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div className="status-indicator"></div>
               <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Online</span>

@@ -409,6 +409,48 @@ async def n8n_callback(data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing n8n callback: {str(e)}")
 
+
+# ============================================================================
+# N8N Proxy Endpoint (to avoid CORS issues)
+# ============================================================================
+
+@app.post("/api/n8n/proxy")
+async def proxy_to_n8n(data: dict):
+    """Proxy endpoint to forward requests to N8N webhooks and avoid CORS issues."""
+    try:
+        webhook_url = data.get("webhookUrl")
+        payload = data.get("payload", {})
+        
+        if not webhook_url:
+            raise HTTPException(status_code=400, detail="webhookUrl is required")
+        
+        # Forward the request to N8N
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                webhook_url,
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            # Return the N8N response
+            return {
+                "success": True,
+                "status": response.status_code,
+                "data": response.json() if response.status_code == 200 else response.text
+            }
+            
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="N8N service timeout")
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"Failed to connect to N8N: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error proxying to N8N: {str(e)}")
+
+
+# ============================================================================
+# File Processing Endpoint
+# ============================================================================
+
 @sio.on('connect')
 async def connect(sid, environ):
     print(f"Client connected: {sid}")

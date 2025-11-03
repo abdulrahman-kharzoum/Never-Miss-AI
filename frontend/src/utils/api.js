@@ -26,68 +26,95 @@ export const storeUserToken = async (tokenData) => {
 
 export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refreshToken, userName = '', userEmail = '', userId = '', aiTimestamp = '', webhookUrl = N8N_WEBHOOK_URL) => {
   try {
-    const N8N_API_KEY = process.env.REACT_APP_N8N_API_KEY || 'test_key';
-    
-    const response = await axios.post(
+    console.log('Sending message to N8N via proxy:', {
       webhookUrl,
+      sessionId,
+      messagePreview: chatInput.substring(0, 50)
+    });
+    
+    // Use backend proxy to avoid CORS issues
+    const response = await axios.post(
+      `${BACKEND_URL}/api/n8n/proxy`,
       {
-        sessionId,
-        action: 'sendMessage',
-        messageType: 'text',
-        chatInput,
-        // Provide both camelCase and snake_case keys for compatibility with different n8n workflows
-        userName,
-        user_name: userName,
-        userEmail,
-        user_email: userEmail,
-        userId,
-        user_id: userId,
-        accessToken: accessToken || '',
-        refreshToken: refreshToken || '',
-        aiTimestamp: aiTimestamp // Add the AI timestamp to the payload
+        webhookUrl,
+        payload: {
+          sessionId,
+          action: 'sendMessage',
+          messageType: 'text',
+          chatInput,
+          // Provide both camelCase and snake_case keys for compatibility with different n8n workflows
+          userName,
+          user_name: userName,
+          userEmail,
+          user_email: userEmail,
+          userId,
+          user_id: userId,
+          accessToken: accessToken || '',
+          refreshToken: refreshToken || '',
+          aiTimestamp: aiTimestamp // Add the AI timestamp to the payload
+        }
       },
       {
         headers: {
-          'Authorization': `Bearer ${N8N_API_KEY}`,
           'Content-Type': 'application/json'
-        }
+        },
+        timeout: 30000 // 30 second timeout
       }
     );
+    console.log('N8N response received via proxy:', response.status);
     return response.data;
   } catch (error) {
-    console.error('Error sending message to N8N:', error);
+    console.error('Error sending message to N8N:', {
+      message: error.message,
+      code: error.code,
+      webhookUrl,
+      response: error.response?.data
+    });
+    
+    // Provide user-friendly error message
+    if (error.code === 'ECONNABORTED') {
+      throw new Error('Request timeout - N8N service is taking too long to respond');
+    } else if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+      throw new Error('Cannot connect to backend proxy service. Please check if the backend is running.');
+    } else if (error.response) {
+      const detail = error.response.data?.detail || error.response.statusText;
+      throw new Error(`N8N service error: ${error.response.status} - ${detail}`);
+    }
     throw error;
   }
 };
 
 export const sendAudioToN8N = async (sessionId, audioFile, accessToken, refreshToken, userName = '', userEmail = '', userId = '', aiTimestamp = '', webhookUrl = N8N_WEBHOOK_URL) => {
   try {
-    const N8N_API_KEY = process.env.REACT_APP_N8N_API_KEY || 'test_key';
+    console.log('Sending audio to N8N via proxy');
     
+    // Use backend proxy to avoid CORS issues
     const response = await axios.post(
-      webhookUrl,
+      `${BACKEND_URL}/api/n8n/proxy`,
       {
-        sessionId,
-        action: 'sendMessage',
-        messageType: 'audio',
-        audioFile: audioFile, // Base64 encoded audio
-        // Provide both camelCase and snake_case keys for compatibility with different n8n workflows
-        userName,
-        user_name: userName,
-        userEmail,
-        user_email: userEmail,
-        userId,
-        user_id: userId,
-        accessToken: accessToken || '',
-        refreshToken: refreshToken || '',
-        aiTimestamp: aiTimestamp // Add the AI timestamp to the payload
+        webhookUrl,
+        payload: {
+          sessionId,
+          action: 'sendMessage',
+          messageType: 'audio',
+          audioFile: audioFile, // Base64 encoded audio
+          // Provide both camelCase and snake_case keys for compatibility with different n8n workflows
+          userName,
+          user_name: userName,
+          userEmail,
+          user_email: userEmail,
+          userId,
+          user_id: userId,
+          accessToken: accessToken || '',
+          refreshToken: refreshToken || '',
+          aiTimestamp: aiTimestamp // Add the AI timestamp to the payload
+        }
       },
       {
         headers: {
-          'Authorization': `Bearer ${N8N_API_KEY}`,
           'Content-Type': 'application/json'
         },
-        responseType: 'text' // Treat the response as plain text
+        timeout: 30000
       }
     );
     return response.data;

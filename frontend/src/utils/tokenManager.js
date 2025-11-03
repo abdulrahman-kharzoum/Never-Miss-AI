@@ -83,6 +83,10 @@ class TokenManager {
       console.log('🔄 Calling backend to get a new access token...');
       const response = await axios.post(`${BACKEND_URL}/api/auth/refresh-token`, {
         user_id: this.userId,
+      }, {
+        headers: {
+          'Authorization': `Bearer ${process.env.REACT_APP_N8N_API_KEY}`
+        }
       });
 
       const { accessToken, expiresAt, refreshToken } = response.data;
