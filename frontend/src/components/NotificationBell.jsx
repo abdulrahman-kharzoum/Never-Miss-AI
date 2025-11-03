@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNotification } from '../context/NotificationContext';
-import { STUDY_GUIDE_WEBHOOK } from '../utils/api';
+import { PLAN_WEBHOOK, STUDY_GUIDE_WEBHOOK, UNIVERSITY_GUIDE_WEBHOOK } from '../utils/api';
 
 const BellIcon = ({ count, onClick, theme }) => (
   <button
@@ -79,12 +79,36 @@ const NotificationBell = ({ theme = 'light' }) => {
                 // If the notification had an onClick handler, call it. If it's a completed file with redirectUrl, open a new tab.
                 if (item.onClick) {
                   try { item.onClick(item.data); } catch (e) { console.error(e); }
-                } else if (item.data && item.data.status === 'completed') {
+                } else if ((item.data && item.data.status === 'completed') || item.type === 'completed' || item.type === 'success') {
                   try {
-                    // Use the static Study Guide webhook for completed notifications
-                    const webhook = STUDY_GUIDE_WEBHOOK;
+                    // Determine webhook: prefer explicit webhook in payload, then map by tab/source or message heuristics
+                    const determineWebhook = () => {
+                      try {
+                        if (item.data?.webhook) return item.data.webhook;
+                        if (item.data?.webhook_url) return item.data.webhook_url;
+                        const maybe = (v) => (v || '').toString().toLowerCase();
+                        const tab = maybe(item.data?.tab);
+                        const source = maybe(item.data?.source);
+                        if (tab.includes('study') || source.includes('study')) return STUDY_GUIDE_WEBHOOK;
+                        if (tab.includes('university') || source.includes('university')) return UNIVERSITY_GUIDE_WEBHOOK;
+                        if (tab.includes('plan') || tab.includes('day') || source.includes('plan')) return PLAN_WEBHOOK;
+                        if (item.message && /study guide/i.test(item.message)) return STUDY_GUIDE_WEBHOOK;
+                        if (item.message && /university/i.test(item.message)) return UNIVERSITY_GUIDE_WEBHOOK;
+                        if (item.message && /plan your day|plan/i.test(item.message)) return PLAN_WEBHOOK;
+                      } catch (e) { /* ignore */ }
+                      return PLAN_WEBHOOK;
+                    };
+
+                    const webhook = determineWebhook();
                     localStorage.setItem('chatWebhookUrl', webhook);
-                    window.open(`/chat?webhook=${encodeURIComponent(webhook)}`, '_blank');
+                    try {
+                      const newWin = window.open(`/chat?webhook=${encodeURIComponent(webhook)}`, '_blank');
+                      if (!newWin) {
+                        window.location.href = `/chat?webhook=${encodeURIComponent(webhook)}`;
+                      }
+                    } catch (e) {
+                      window.location.href = `/chat?webhook=${encodeURIComponent(webhook)}`;
+                    }
                   } catch (e) {
                     console.error('Failed to open chat window', e);
                   }

@@ -1,11 +1,18 @@
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const N8N_WEBHOOK_URL = 'https://n8n.zentraid.com/webhook/ConnectAI_KH_message1';
-// Static webhook for Study Guide tab (used when notifications indicate completion)
-const STUDY_GUIDE_WEBHOOK = 'https://n8n.zentraid.com/webhook/Study_Guid';
 
-export { N8N_WEBHOOK_URL, STUDY_GUIDE_WEBHOOK };
+// Plan / default chat webhook (used by "Plan Your Day" / main chat)
+const PLAN_WEBHOOK = 'https://n8n.zentraid.com/webhook/ConnectAI_KH_message1';
+// Static webhook for Study Guide tab
+const STUDY_GUIDE_WEBHOOK = 'https://n8n.zentraid.com/webhook/Study_Guid';
+// University guide webhook
+const UNIVERSITY_GUIDE_WEBHOOK = 'https://n8n.zentraid.com/webhook/university_Guide';
+
+// Backwards-compatible name previously used in the codebase
+const N8N_WEBHOOK_URL = PLAN_WEBHOOK;
+
+export { N8N_WEBHOOK_URL, PLAN_WEBHOOK, STUDY_GUIDE_WEBHOOK, UNIVERSITY_GUIDE_WEBHOOK };
 
 export const storeUserToken = async (tokenData) => {
   try {
@@ -17,12 +24,12 @@ export const storeUserToken = async (tokenData) => {
   }
 };
 
-export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refreshToken, userName = '', userEmail = '', userId = '', aiTimestamp = '') => {
+export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refreshToken, userName = '', userEmail = '', userId = '', aiTimestamp = '', webhookUrl = N8N_WEBHOOK_URL) => {
   try {
     const N8N_API_KEY = process.env.REACT_APP_N8N_API_KEY || 'test_key';
     
     const response = await axios.post(
-      N8N_WEBHOOK_URL, 
+      webhookUrl,
       {
         sessionId,
         action: 'sendMessage',
@@ -53,12 +60,12 @@ export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refres
   }
 };
 
-export const sendAudioToN8N = async (sessionId, audioFile, accessToken, refreshToken, userName = '', userEmail = '', userId = '', aiTimestamp = '') => {
+export const sendAudioToN8N = async (sessionId, audioFile, accessToken, refreshToken, userName = '', userEmail = '', userId = '', aiTimestamp = '', webhookUrl = N8N_WEBHOOK_URL) => {
   try {
     const N8N_API_KEY = process.env.REACT_APP_N8N_API_KEY || 'test_key';
     
     const response = await axios.post(
-      N8N_WEBHOOK_URL,
+      webhookUrl,
       {
         sessionId,
         action: 'sendMessage',
