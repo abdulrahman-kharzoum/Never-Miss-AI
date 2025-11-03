@@ -87,11 +87,41 @@ const StudyGuideTab = () => {
       id: Math.random().toString(36).substr(2, 9),
       file,
       progress: 0,
-      status: 'pending',
+      status: 'preparing', // Start with 'preparing' status
     }));
 
     setFiles(prev => [...prev, ...uploadedFiles]);
-  }, []);
+
+    // Simulate file preparation progress (reading file, validating, etc.)
+    uploadedFiles.forEach((fileData, index) => {
+      let currentProgress = 0;
+      const progressInterval = setInterval(() => {
+        currentProgress += Math.random() * 15 + 5; // Random increment between 5-20%
+        
+        if (currentProgress >= 95) {
+          currentProgress = 100;
+          clearInterval(progressInterval);
+          
+          // Change status to 'ready' when preparation is complete
+          setFiles(prev => 
+            prev.map(f => 
+              f.id === fileData.id 
+                ? { ...f, progress: 100, status: 'ready' }
+                : f
+            )
+          );
+        } else {
+          setFiles(prev => 
+            prev.map(f => 
+              f.id === fileData.id 
+                ? { ...f, progress: Math.round(currentProgress) }
+                : f
+            )
+          );
+        }
+      }, 200 + (index * 100)); // Stagger animation for multiple files
+    });
+  }, [allowedTypes]);
 
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
@@ -178,116 +208,249 @@ const StudyGuideTab = () => {
     xhr.send(formData);
   };
 
-  const getFileIcon = (type) => {
-    if (type.includes('pdf')) return '📄';
-    if (type.includes('csv')) return '📊';
-    if (type.includes('sheet') || type.includes('excel')) return '📈';
-    return '📝';
-  };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'uploading':
-        return <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>;
-      case 'completed':
-        return <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center"><span className="text-white text-sm">✓</span></div>;
-      case 'error':
-        return <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center"><span className="text-white text-sm">!</span></div>;
-      default:
-        return null;
-    }
-  };
-
-  const totalSize = files.reduce((acc, file) => acc + file.file.size, 0);
 
   return (
-    <div className={`min-h-screen h-full overflow-y-auto p-6 ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gradient-to-br from-blue-50 via-white to-purple-50'}`}>
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className={`text-5xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent'}`}>
-            Study Guide Builder
+    <div className={`min-h-screen h-full overflow-y-auto p-6 ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-gradient-to-br from-indigo-50 via-white to-blue-50'}`}>
+      <div className="max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="mb-10 text-center">
+          <h1 className={`text-4xl font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            📚 Study Guide Builder
           </h1>
-          <p className={`text-xl max-w-2xl mx-auto ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+          <p className={`text-lg font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             Upload your documents to create a personalized RAG system for quizzes, summaries, and Q&A.
           </p>
         </div>
 
+        {/* Upload Zone - Inspired by Dribbble Design */}
         <div
-          className={`relative rounded-3xl border-2 border-dashed transition-all duration-300 ${isDragOver ? 'border-blue-500 scale-105' : 'border-gray-400'} ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}
+          className={`relative rounded-2xl border-2 border-dashed transition-all duration-300 ${
+            isDragOver 
+              ? (theme === 'dark' ? 'border-blue-400 bg-blue-900/20' : 'border-indigo-400 bg-indigo-50/50')
+              : (theme === 'dark' ? 'border-gray-600 bg-gray-800/50' : 'border-gray-300 bg-white')
+          } backdrop-blur-sm`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className="p-12 text-center">
-            <div className={`w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center transition-all duration-300 ${isDragOver ? (theme === 'dark' ? 'bg-blue-900' : 'bg-blue-100 scale-110') : (theme === 'dark' ? 'bg-gray-700' : 'bg-gradient-to-br from-blue-100 to-purple-100')}`}>
-              <span className="text-4xl">{isDragOver ? '📥' : '☁️'}</span>
+          <div className="p-16 text-center">
+            {/* Icon */}
+            <div className={`w-20 h-20 mx-auto mb-6 rounded-2xl flex items-center justify-center transition-all duration-300 ${
+              isDragOver 
+                ? (theme === 'dark' ? 'bg-blue-500/20' : 'bg-indigo-100')
+                : (theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100')
+            }`}>
+              <svg className={`w-10 h-10 ${isDragOver ? 'text-indigo-500' : (theme === 'dark' ? 'text-gray-400' : 'text-gray-500')}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
             </div>
-            <h3 className={`text-2xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-              {isDragOver ? 'Drop your files here!' : 'Drag & Drop Files Here'}
+            
+            {/* Text */}
+            <h3 className={`text-2xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              Drop your files here
             </h3>
-            <p className={`mb-8 text-lg ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              or click to browse and select files
+            <p className={`text-base mb-8 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+              or click the button below to browse
             </p>
+            
+            {/* Choose File Button with Enhanced Gradient Design */}
             <button
               onClick={handleUploadClick}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 transform hover:scale-105 shadow-lg"
+              className="group relative bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white px-10 py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform hover:scale-110 hover:shadow-2xl shadow-xl overflow-hidden"
             >
-              📤 Choose Files
+              {/* Animated shine effect */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+              
+              {/* Button content */}
+              <div className="relative flex items-center justify-center space-x-3">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <span>Choose Files</span>
+                <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
             </button>
-            <div className="mt-8 flex flex-wrap justify-center gap-4">
-              <span className="bg-red-100 text-red-700 px-4 py-2 rounded-full text-sm font-medium">PDF</span>
-              <span className="bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-medium">CSV</span>
-              <span className="bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-medium">Excel</span>
-              <span className="bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-sm font-medium">Text</span>
-            </div>
+            
+            <p className={`text-sm mt-6 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+              <span className="font-semibold">Supported formats:</span> PDF, CSV, TXT, DOCX • <span className="font-semibold">Max size:</span> 10MB per file
+            </p>
           </div>
         </div>
 
+        {/* File Cards - Dribbble Design Inspired */}
         {files.length > 0 && (
-          <>
-            <div className={`mt-8 p-6 rounded-2xl ${theme === 'dark' ? 'bg-gray-800' : 'bg-white shadow-lg'}`}>
-              <h2 className={`text-2xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>Selected Files</h2>
-              <div className="grid gap-4">
-                {files.map((fileData) => (
-                  <div key={fileData.id} className={`p-4 rounded-xl border ${theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${theme === 'dark' ? 'bg-gray-600' : (fileData.file.type.includes('pdf') ? 'bg-red-100' : 'bg-blue-100')}`}>
-                          <span className="text-2xl">{getFileIcon(fileData.file.type)}</span>
-                        </div>
-                        <div>
-                          <p className={`font-medium truncate max-w-xs ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
-                            {fileData.file.name}
-                          </p>
-                          <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {(fileData.file.size / 1024 / 1024).toFixed(2)} MB
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        {getStatusIcon(fileData.status)}
-                        <button
-                          onClick={() => deleteFile(fileData.id)}
-                          className="text-red-500 hover:text-red-700 transition-colors"
-                        >
-                          🗑️
-                        </button>
-                      </div>
+          <div className="mt-8 space-y-4">
+            {files.map((fileData) => (
+              <div 
+                key={fileData.id} 
+                className={`rounded-2xl p-5 transition-all duration-300 ${
+                  theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+                } shadow-lg hover:shadow-xl`}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  {/* Left: Icon + File Info */}
+                  <div className="flex items-center space-x-4 flex-1 min-w-0">
+                    {/* File Icon */}
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      fileData.status === 'error' 
+                        ? (theme === 'dark' ? 'bg-red-500/20' : 'bg-red-50')
+                        : fileData.status === 'completed'
+                        ? (theme === 'dark' ? 'bg-green-500/20' : 'bg-green-50')
+                        : fileData.file.type.includes('pdf')
+                        ? (theme === 'dark' ? 'bg-indigo-500/20' : 'bg-indigo-50')
+                        : (theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-50')
+                    }`}>
+                      <svg className={`w-6 h-6 ${
+                        fileData.status === 'error' ? 'text-red-500' :
+                        fileData.status === 'completed' ? 'text-green-500' :
+                        fileData.file.type.includes('pdf') ? 'text-indigo-500' : 'text-blue-500'
+                      }`} fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    
+                    {/* File Name + Size */}
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {fileData.file.name}
+                      </p>
+                      <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                        {(fileData.file.size / (1024 * 1024)).toFixed(2)}gb
+                      </p>
                     </div>
                   </div>
-                ))}
+
+                  {/* Right: Status + Actions */}
+                  <div className="flex items-center space-x-3 flex-shrink-0">
+                    {/* Status Indicator */}
+                    {fileData.status === 'completed' && (
+                      <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+                    
+                    {fileData.status === 'error' && (
+                      <button
+                        onClick={() => uploadFiles()}
+                        className={`text-sm font-medium flex items-center space-x-1 ${
+                          theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-indigo-600 hover:text-indigo-700'
+                        }`}
+                      >
+                        <span>Try Again</span>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </button>
+                    )}
+
+                    {(fileData.status === 'preparing' || fileData.status === 'uploading') && (
+                      <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        {fileData.progress}%
+                      </span>
+                    )}
+
+                    {/* Delete Button */}
+                    <button
+                      onClick={() => deleteFile(fileData.id)}
+                      disabled={fileData.status === 'uploading' || fileData.status === 'preparing'}
+                      className={`p-2 rounded-lg transition-colors ${
+                        (fileData.status === 'uploading' || fileData.status === 'preparing')
+                          ? 'opacity-50 cursor-not-allowed'
+                          : theme === 'dark'
+                          ? 'hover:bg-red-500/20 text-red-400'
+                          : 'hover:bg-red-50 text-red-500'
+                      }`}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                {(fileData.status === 'preparing' || fileData.status === 'uploading') && (
+                  <div className={`h-2 rounded-full overflow-hidden ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                    <div 
+                      className={`h-full transition-all duration-300 ease-out ${
+                        fileData.status === 'preparing' 
+                          ? 'bg-gradient-to-r from-indigo-500 to-blue-500'
+                          : 'bg-gradient-to-r from-indigo-500 to-purple-500'
+                      }`}
+                      style={{ width: `${fileData.progress}%` }}
+                    />
+                  </div>
+                )}
+
+                {/* Success Message */}
+                {fileData.status === 'completed' && (
+                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                    Upload Successful!
+                  </p>
+                )}
+
+                {/* Error Message */}
+                {fileData.status === 'error' && (
+                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
+                    Upload failed! Please try again.
+                  </p>
+                )}
+
+                {/* Ready State */}
+                {fileData.status === 'ready' && (
+                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                    Ready to upload
+                  </p>
+                )}
               </div>
-            </div>
-            <div className="mt-8 flex justify-center">
+            ))}
+
+            {/* Upload Button */}
+            <div className="mt-6 flex justify-center">
               <button
                 onClick={uploadFiles}
-                disabled={files.some(f => f.status === 'uploading')}
-                className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-8 py-4 rounded-2xl font-semibold text-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-200 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={files.some(f => f.status === 'uploading' || f.status === 'preparing')}
+                className="group relative bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white px-10 py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform hover:scale-110 hover:shadow-2xl shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 overflow-hidden"
               >
-                🚀 Process and Upload Files
+                {/* Animated shine effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                
+                {/* Button content with icons */}
+                <div className="relative flex items-center justify-center space-x-3">
+                  {files.some(f => f.status === 'preparing') ? (
+                    <>
+                      <svg className="w-6 h-6 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span>Preparing Files...</span>
+                    </>
+                  ) : files.some(f => f.status === 'uploading') ? (
+                    <>
+                      <svg className="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                      </svg>
+                      <span>Uploading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <span>Process and Upload Files</span>
+                      <svg className="w-5 h-5 transform group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </>
+                  )}
+                </div>
               </button>
             </div>
-          </>
+          </div>
         )}
 
         <input

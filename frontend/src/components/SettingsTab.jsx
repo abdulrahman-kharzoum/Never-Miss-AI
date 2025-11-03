@@ -13,11 +13,12 @@ const SettingsTab = ({ user, onSignOut }) => {
 
   useEffect(() => {
     loadSettings();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const loadSettings = async () => {
     try {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('user_settings')
         .select('*')
         .eq('user_id', user.uid)

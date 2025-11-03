@@ -34,7 +34,8 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
   const createNewSession = useCallback(async () => {
     return createSessionWithWebhook(N8N_WEBHOOK_URL, 'chat');
-  }, [user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Create a new session and associate it with a webhook URL. We persist webhook mapping in localStorage
   const createSessionWithWebhook = useCallback(async (webhookUrl, source = 'tab') => {
@@ -197,7 +198,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
     const channel = supabase.channel(`chat-messages-${sessionId}`);
 
-    const subscription = channel
+    channel
       .on(
         'postgres_changes',
         {

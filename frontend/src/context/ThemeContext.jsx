@@ -32,7 +32,7 @@ export const ThemeProvider = ({ children, userId }) => {
       }
 
       try {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('user_settings')
           .select('theme')
           .eq('user_id', userId)
@@ -42,7 +42,7 @@ export const ThemeProvider = ({ children, userId }) => {
           setThemeState(data.theme);
           localStorage.setItem('app-theme', data.theme);
         }
-      } catch (error) {
+      } catch (err) {
         console.log('No theme preference found in Supabase, using local or default');
       } finally {
         setLoading(false);
