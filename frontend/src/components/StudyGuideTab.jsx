@@ -25,6 +25,18 @@ const StudyGuideTab = () => {
   const processedSessionIds = useRef(new Set()); // Track which sessions have been completed to prevent duplicates
 
   useEffect(() => {
+    // Load previously processed sessionIds from localStorage on mount
+    try {
+      const stored = localStorage.getItem('processedStudyGuideSessions');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        processedSessionIds.current = new Set(parsed);
+        console.log('Loaded processed sessions:', parsed);
+      }
+    } catch (e) {
+      console.error('Failed to load processed sessions', e);
+    }
+
     socket.current = io(process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000');
 
     socket.current.on('file_status_update', (data) => {
@@ -37,9 +49,6 @@ const StudyGuideTab = () => {
         )
       );
 
-      // Use notification system instead of alert
-      // ONLY create a notification on COMPLETED status to avoid duplicates
-      // AND only if this sessionId hasn't been processed before
       if (data && data.status === 'completed') {
         // DEDUPLICATION: Skip if we've already processed this sessionId
         if (processedSessionIds.current.has(data.sessionId)) {
@@ -47,34 +56,49 @@ const StudyGuideTab = () => {
           return;
         }
 
-        // Mark this sessionId as processed
+        // Mark this sessionId as processed (in memory and localStorage)
         processedSessionIds.current.add(data.sessionId);
+        try {
+          const arr = Array.from(processedSessionIds.current);
+          localStorage.setItem('processedStudyGuideSessions', JSON.stringify(arr));
+          console.log('Saved processed session to localStorage:', data.sessionId);
+        } catch (e) {
+          console.error('Failed to save processed session', e);
+        }
 
-        const message = data.message || `Files for session ${data.sessionId} updated`;
+        const message = data.message || `Files processing completed! Opening Study Guide Chat...`;
         // Compose notification payload
         const notifData = {
           sessionId: data.sessionId,
           userId: data.userId,
           status: data.status,
           redirectUrl: data.redirectUrl || null,
-          source: 'file_processing', // so bell counts only file processing notifications
+          source: 'file_processing',
         };
 
-        // When completed with a redirectUrl, add a clickable notification
+        // When completed with a redirectUrl, add a clickable notification AND auto-redirect
         if (data.redirectUrl) {
+          // Store webhook URL and session info for Study Guide tab
+          localStorage.setItem('chatWebhookUrl', data.redirectUrl);
+          localStorage.setItem('studyGuideSessionId', data.sessionId);
+          localStorage.setItem('autoOpenStudyGuide', 'true');
+          
+          // Add notification (still clickable if user wants to click)
           addNotification(message, 'success', 10000, (d) => {
             try {
-              // Store webhook URL and session info for Study Guide tab
-              localStorage.setItem('chatWebhookUrl', d.redirectUrl);
-              localStorage.setItem('studyGuideSessionId', d.sessionId);
-              localStorage.setItem('autoOpenStudyGuide', 'true');
               // Redirect to study guide tab (same window)
               window.location.href = '/#study_guide';
             } catch (e) {
               console.error('Failed to open study guide', e);
             }
           }, notifData);
+          
           console.log('New Chat Webhook URL (from n8n): ', data.redirectUrl);
+          
+          // AUTO-REDIRECT: Open Study Guide Chat automatically without requiring user to click notification
+          setTimeout(() => {
+            window.location.href = '/#study_guide';
+          }, 1000); // 1 second delay so user can see the notification first
         }
       }
     });
