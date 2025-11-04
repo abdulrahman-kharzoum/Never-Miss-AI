@@ -350,24 +350,20 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
     // If no session exists, create one based on the active tab
     let sessionToUse = currentSession;
     if (!sessionToUse) {
-      let webhookUrl = N8N_WEBHOOK_URL;
-      let source = 'chat';
-      
+      let webhookUrl;
+      let source;
       if (activeTab === 'university_guide') {
         webhookUrl = UNIVERSITY_GUIDE_WEBHOOK;
         source = 'university_guide';
       } else if (activeTab === 'study_guide') {
         webhookUrl = localStorage.getItem('chatWebhookUrl') || STUDY_GUIDE_WEBHOOK;
         source = 'study_guide';
-      } else if (activeTab === 'chat') {
+      } else {
         webhookUrl = PLAN_WEBHOOK || N8N_WEBHOOK_URL;
         source = 'chat';
       }
-      
       const newSession = await createSessionWithWebhook(webhookUrl, source);
       sessionToUse = newSession || currentSession;
-      
-      // If still no session, return
       if (!sessionToUse) {
         setSending(false);
         return;
