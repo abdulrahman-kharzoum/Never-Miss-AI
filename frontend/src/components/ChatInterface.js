@@ -124,15 +124,7 @@ const ChatInterface = ({ user, onSignOut }) => {
           const maybe = m?.webhook_url || m?.webhook || m?.data?.webhook || m?.metadata?.webhook_url || m?.data?.webhook_url;
           if (maybe) {
             try { localStorage.setItem(`session_webhook_${sessionId}`, maybe); } catch (e) { /* ignore */ }
-            try {
-              const { error: upErr } = await supabase
-                .from('chat_sessions')
-                .update({ webhook_url: maybe })
-                .eq('session_id', sessionId);
-              if (upErr && upErr.message && upErr.message.includes('column')) {
-                // ignore missing column
-              }
-            } catch (e) { /* ignore */ }
+            // Do NOT attempt to update chat_sessions.webhook_url here; keep mapping in localStorage only.
             break;
           }
         }
@@ -145,7 +137,19 @@ const ChatInterface = ({ user, onSignOut }) => {
   };
 
   const sendMessage = async () => {
-    if (!inputMessage.trim() || !currentSession || sending) return;
+    if (!inputMessage.trim() || sending) return;
+
+    // Create a new session if none exists
+    if (!currentSession) {
+      try {
+        await createNewSession();
+        // Wait a brief moment for the session to be properly set
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error('Error creating new session:', error);
+        return;
+      }
+    }
 
     const userMessage = inputMessage.trim();
     setInputMessage('');
@@ -245,7 +249,6 @@ const ChatInterface = ({ user, onSignOut }) => {
 
     } catch (error) {
       console.error('Error sending message:', error);
-      alert('Failed to send message. Please try again.');
     } finally {
       setSending(false);
       if (textareaRef.current) {
@@ -451,7 +454,6 @@ const ChatInterface = ({ user, onSignOut }) => {
       };
     } catch (error) {
       console.error('Error sending audio:', error);
-      alert('Failed to send audio message.');
     } finally {
       setSending(false);
     }
