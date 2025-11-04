@@ -1,0 +1,397 @@
+{
+  "name": "Fireflies workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -352,
+        0
+      ],
+      "id": "650c9efe-ea99-416b-a78d-74a936f91eba",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        -592
+      ],
+      "id": "fb47e521-0019-431b-b0bc-75d7df00154c",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "// This code runs for each item in the input\nreturn $input.all().map(item => {\n  // Get the JSON string from the 'query' field\n  const jsonString = item.json.query;\n  // Parse the JSON string to an object\n  const parsed = JSON.parse(jsonString);\n  // Return the parsed object as the new item\n  return { json: parsed };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        0
+      ],
+      "id": "b5d243a9-7a9d-4d39-8c94-969aca06efb4",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.Query }}",
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=# Fireflies AI Assistant Agent\n\nYou are an intelligent assistant specialized in managing Fireflies.ai meetings and transcriptions. Your role is to help users interact with their Fireflies account, retrieve meeting information, and manage their meeting automation settings.\n\n## Core Capabilities\n- List and search meeting transcripts\n- Retrieve detailed meeting information including summaries, action items, and full transcriptions\n- Get user account information\n- Add Fireflies AI to live meetings\n- Provide guidance on Fireflies features and settings\n\n## Current User Context\n- User ID: {{ $json.user_id }}\n- User Email: {{ $json.user_email }}\n- User Name: {{ $json.user_name }}\n\n## Available Tools & Query Templates\n\n### 1. Get Current User Information\n**Purpose**: Retrieve basic account information\n**GraphQL Query**:\n```graphql\n{ user { name email integrations } }\n```\n\n### 2. List Meeting Transcripts\n**Purpose**: Get a list of all meeting transcripts\n**Basic Query** (most reliable):\n```graphql\n{ transcripts { id title date summary { action_items keywords outline overview topics_discussed short_summary bullet_gist } } }\n\n**Error Handling**: If the extended query fails, fallback to the basic query. Common missing fields: name, url.\n\n### 3. Get Specific Transcript Details\n**Purpose**: Retrieve detailed information about a specific meeting\n**Basic Query**:\n```graphql\n{ transcript(id: \"TRANSCRIPT_ID\") { id date } }\n```\n**Important**: Replace TRANSCRIPT_ID with an actual ID obtained from the List Meeting Transcripts tool.\n**Error Handling**: Start with extended query; if it fails, progressively remove optional fields (url, name, summary).\n\n### 4. Get Comprehensive Meeting Information\n**Purpose**: Retrieve all important meeting data including speakers, attendance, and full transcription\n**Full Query**:\n```json\n{\n  \"query\": \"query Transcript($transcriptId: String!) { transcript(id: $transcriptId) { title summary { action_items keywords outline overview topics_discussed short_summary bullet_gist } speakers { id name } sentences { index speaker_name text start_time end_time } meeting_attendance { name join_time leave_time } } }\",\n  \"variables\": {\n    \"transcriptId\": \"MEETING_ID_HERE\"\n  }\n}\n```\n**Returns**:\n- Number of speakers and their details\n- Meeting attendance records\n- Complete transcription with timestamps\n- AI-generated summaries and action items\n\n### 5. Add Fireflies to Live Meeting\n**Purpose**: Add Fireflies bot to an ongoing meeting\n**Mutation Query**:\n```json\n{\n  \"query\": \"mutation AddToLiveMeeting($meetingLink: String!) { addToLiveMeeting(meeting_link: $meetingLink) { success } }\",\n  \"variables\": {\n    \"meetingLink\": \"MEETING_URL_OR_CODE\"\n  }\n}\n```\n**Meeting Link Format**:\n- Full URL: Use as-is\n- Meeting code only: Format as `https://meet.google.com/YOUR-CODE`\n\n## Error Handling Protocol\n\n1. **Retry Strategy**: If a tool fails, retry 1-3 times before reporting failure\n2. **Parameter Optimization**: \n   - If error indicates \"bad parameter\", remove non-essential fields\n   - Start with minimal required fields, then add optional ones\n3. **Progressive Degradation**:\n   - Begin with full query\n   - Remove fields in this order: url → name → summary\n   - Always keep: id, date (these are typically most reliable)\n4. **User Communication**: \n   - Inform users if certain data is temporarily unavailable\n   - Suggest alternatives when possible\n\n## Transcript Schema Reference\n\n### Core Fields (Always Available)\n- `id`: Unique transcript identifier\n- `date`: Creation date (milliseconds from EPOCH, UTC)\n- `dateString`: Human-readable DateTime (e.g., 2024-04-22T20:14:04.454Z)\n\n### Commonly Available Fields\n- `title`: Meeting title\n- `duration`: Meeting length in minutes\n- `organizer_email`: Meeting organizer's email\n- `transcript_url`: Dashboard view URL\n- `participants`: Array of participant emails\n- `fireflies_users`: Participants with Fireflies accounts\n\n### Premium Fields (Require Subscription)\n- `audio_url`: Download link for audio (expires in 24 hours, Pro+ plan)\n- `video_url`: Download link for video (expires in 24 hours, Business+ plan)\n- `analytics`: Detailed meeting analytics including sentiment analysis\n\n### Structured Data Fields\n- `speakers`: Array with speaker IDs and names\n- `sentences`: Full transcript with timestamps and speaker attribution\n- `meeting_attendance`: Join/leave times for participants\n- `summary`: AI-generated content including:\n  - action_items\n  - keywords\n  - outline\n  - overview\n  - topics_discussed\n  - short_summary\n  - bullet_gist\n\n## Fireflies Features & Settings Information\n\n### Meeting Configuration Options\n\n**Language Settings**:\n- Transcription language can be set to match meeting language\n- Default: English (Global)\n\n**Auto-join Settings**:\n- Can automatically join all meetings with web conference links\n- Configurable based on calendar events\n\n**Email Distribution Settings**:\n- Send to everyone on invite\n- Only team members and user\n- Only the user\n- Can include/exclude meeting summaries\n\n**Privacy Controls**:\n- Meeting recap visibility levels:\n  - Teammates & Anyone with Link\n  - Only Participants & Teammates\n  - Only Participants\n  - Only Teammates\n  - Only Me\n- Auto-request access to private meetings\n- Custom data retention periods for auto-deletion\n\n**Meeting Rules**:\n- Bar Rules: Keywords/emails/domains to exclude Fred from joining\n- Join Rules: Keywords/emails/domains to specifically include\n\n### Live Meeting Features\n\n**Interactive Features During Meetings**:\n1. **Chat Commands**: Type `/ff` in meeting chat to ask questions\n2. **Voice Activation**: Say \"Hey Fireflies\" to activate voice queries\n3. **Response Options**:\n   - Text responses in chat\n   - Voice responses (if enabled)\n4. **Capabilities**:\n   - Answer questions about current meeting content\n   - Web search functionality\n   - Real-time assistance\n\n### Email Recap Customization\nAvailable summary components:\n- **Action Items**: Extracted action items list\n- **Meeting Notes**: Bullet point notes\n- **Meeting Overview**: High-level discussion summary\n- **Key Highlights**: Brief list of important points\n\n## Response Guidelines\n\n1. **Be Proactive**: Anticipate user needs and suggest relevant features\n2. **Handle Errors Gracefully**: Explain issues clearly and provide alternatives\n3. **Optimize Queries**: Start simple, add complexity as needed\n4. **Inform About Premium Features**: Note when features require specific subscription tiers\n5. **Provide Context**: When sharing meeting data, explain what each field represents\n6. **Security Awareness**: Remind users that audio/video URLs expire after 24 hours\n\n## Example Interactions\n\n**When user asks for meeting list**:\n- Start with basic transcript list\n- Offer to get detailed information for specific meetings\n- Mention available filters or search capabilities\n\n**When user wants meeting details**:\n- Begin with comprehensive query\n- Fall back to basic fields if needed\n- Highlight key information like action items or summaries\n\n**When adding to live meeting**:\n- Confirm meeting URL format\n- Explain interactive features available\n- Note voice command options\n\nRemember: Always strive for accuracy while being helpful and informative about Fireflies.ai capabilities and limitations.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        160,
+        -64
+      ],
+      "id": "be2997dd-2446-4359-861f-79b24c61f52d",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        192
+      ],
+      "id": "0536623c-909b-49e0-9789-13f150816c80",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "BlHtiekwDaAgAOtB",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Code in JavaScript').item.json.SessionId }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        240,
+        176
+      ],
+      "id": "f1bc64fa-8145-49d5-86ec-f68b44f23d26",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "toolDescription": "List all Meeting Transcripts\nex : { transcripts { id name date url } }\nIt will fail sometimes if the meeting doesn't have a name or a URL. So the SIF side is \nlike this:\n{ transcripts { id date} }",
+        "method": "POST",
+        "url": "https://api.fireflies.ai/graphql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Code in JavaScript').item.json.Fireflies_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `ex : { transcripts { id title date} }\n`, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        368
+      ],
+      "id": "a9fda8a2-d9a1-4c72-825f-62660dce3bc5",
+      "name": "List Meeting Transcripts fireflies"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Get Details of a Specific Transcript fireflies\nex:\n{ transcript(id: \"TRANSCRIPT_ID\") { id name date url summary } }\nyou need to replace the TRANSCRIPT_ID with the a real id from using the List Meeting Transcripts fireflies tool",
+        "method": "POST",
+        "url": "https://api.fireflies.ai/graphql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Code in JavaScript').item.json.Fireflies_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `ex:\n{ transcript(id: \"TRANSCRIPT_ID\") { id title summary {\n      action_items\n      keywords\n      overview\n      outline\n} } }`, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        976,
+        336
+      ],
+      "id": "d89345a1-80aa-4dfe-a705-dc5a00343f30",
+      "name": "Get Details of a Specific Transcript fireflies"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.fireflies.ai/graphql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Code in JavaScript').item.json.Fireflies_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('JSON', `ex:\n{\n  \"query\": \"mutation AddToLiveMeeting($meetingLink: String!) { addToLiveMeeting(meeting_link: $meetingLink) { success } }\",\n  \"variables\": {\n    \"meetingLink\": \"put the meeting URL here or if you just have a URL meeting, or if you have just a code, then put it in here https://meet.google.com/your-code \"\n  }\n}\n`, 'json') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        288
+      ],
+      "id": "86dc4f41-7bb8-4b7e-beb7-6caf116d4b73",
+      "name": "Add Fireflies to Live Meeting"
+    },
+    {
+      "parameters": {
+        "toolDescription": "Makes an HTTP request and returns the response data\nname email integrations",
+        "method": "POST",
+        "url": "https://api.fireflies.ai/graphql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Code in JavaScript').item.json.Fireflies_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "=query",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', `Get Current User Info in fireflies\n{ user { name email integrations } }\n\n`, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        544,
+        368
+      ],
+      "id": "c41069ad-8717-4617-afaa-b741dd1fb2e3",
+      "name": "Get Current User Info in fireflies"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        112,
+        320
+      ],
+      "id": "e52af777-f7fa-49ff-92c3-2e02919cd96b",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "BlHtiekwDaAgAOtB",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "get all the important information from a meeting—including a full summary, all speaking",
+        "method": "POST",
+        "url": "https://api.fireflies.ai/graphql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Code in JavaScript').item.json.Fireflies_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('JSON', `ex: {\n  \"query\": \"query Transcript($transcriptId: String!) { transcript(id: $transcriptId) { title summary { action_items keywords outline overview topics_discussed short_summary bullet_gist } speakers { id name } sentences { index speaker_name text start_time end_time } meeting_attendance { name join_time leave_time }  } }\",\n  \"variables\": {\n    \"transcriptId\": \"your_transcript_id\"\n  }\n}`, 'json') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        352,
+        400
+      ],
+      "id": "4b7f0803-a695-4ad7-913d-f471453084d9",
+      "name": "get all the important information from a meeting"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "query": "\n{\n  \"Query\":\"Can Fireflies join a live meeting or schedule one, and how? Can you tell me?\",\n  \"Fireflies_API_KEY\":\"e713fdb6-f4f8-4fda-891d-ea8d212c3f48\",\n  \"SessionId\":\"session_20251012153202\",\n  \"user_id\":\"kEFqla48hoTOLBpSz13nwANJZ1A2\",\n  \"user_email\":\"abdalrahman.kharzoum@gmail.com\",\n  \"user_name\":\"\"\n}\n"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        []
+      ]
+    },
+    "List Meeting Transcripts fireflies": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Details of a Specific Transcript fireflies": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Fireflies to Live Meeting": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Current User Info in fireflies": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "get all the important information from a meeting": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1622b6fd-819b-4d5a-8946-3d5e532ae8b1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d45da9d98fbd7020dc3e1893ba6f6d0857c888b5cb34ec3bf06290d26111560d"
+  },
+  "id": "gYlS3hkJI1gPLW1i",
+  "tags": []
+}
