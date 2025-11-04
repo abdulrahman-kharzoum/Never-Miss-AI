@@ -43,7 +43,6 @@ export const ThemeProvider = ({ children, userId }) => {
           localStorage.setItem('app-theme', data.theme);
         }
       } catch (err) {
-        console.log('No theme preference found in Supabase, using local or default');
       } finally {
         setLoading(false);
       }

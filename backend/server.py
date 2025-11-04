@@ -32,6 +32,7 @@ async def startup_db_client():
 # Define the list of allowed origins (your frontend domains)
 origins = [
     "http://localhost:3000",  # For local development
+    "https://nevermissai.zentrad.com", # Your production frontend
     # Add your production frontend URL here when you deploy
     # e.g., "https://www.your-app-name.com"
 ]

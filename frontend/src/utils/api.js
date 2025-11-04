@@ -26,7 +26,6 @@ export const storeUserToken = async (tokenData) => {
 
 export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refreshToken, userName = '', userEmail = '', userId = '', aiTimestamp = '', webhookUrl = N8N_WEBHOOK_URL) => {
   try {
-    console.log('Sending message to N8N via proxy:', {
       webhookUrl,
       sessionId,
       messagePreview: chatInput.substring(0, 50)
@@ -61,7 +60,6 @@ export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refres
         timeout: 30000 // 30 second timeout
       }
     );
-    console.log('N8N response received via proxy:', response.status);
     return response.data;
   } catch (error) {
     console.error('Error sending message to N8N:', {
@@ -86,7 +84,6 @@ export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refres
 
 export const sendAudioToN8N = async (sessionId, audioFile, accessToken, refreshToken, userName = '', userEmail = '', userId = '', aiTimestamp = '', webhookUrl = N8N_WEBHOOK_URL) => {
   try {
-    console.log('Sending audio to N8N via proxy');
     
     // Use backend proxy to avoid CORS issues
     const response = await axios.post(

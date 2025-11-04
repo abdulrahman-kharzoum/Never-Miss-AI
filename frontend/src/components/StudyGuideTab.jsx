@@ -30,7 +30,6 @@ const StudyGuideTab = ({ user }) => {
       if (stored) {
         const parsed = JSON.parse(stored);
         processedSessionIds.current = new Set(parsed);
-        console.log('Loaded processed sessions:', parsed);
       }
     } catch (e) {
       console.error('Failed to load processed sessions', e);
@@ -39,7 +38,6 @@ const StudyGuideTab = ({ user }) => {
     socket.current = io(process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000');
 
     socket.current.on('file_status_update', (data) => {
-      console.log('File status update received:', data);
       setFiles(prevFiles =>
         prevFiles.map(file =>
           file.sessionId === data.sessionId
@@ -51,7 +49,6 @@ const StudyGuideTab = ({ user }) => {
       if (data && data.status === 'completed') {
         // DEDUPLICATION: Skip if we've already processed this sessionId
         if (processedSessionIds.current.has(data.sessionId)) {
-          console.log(`Session ${data.sessionId} already processed, skipping duplicate completion event`);
           return;
         }
 
@@ -60,7 +57,6 @@ const StudyGuideTab = ({ user }) => {
         try {
           const arr = Array.from(processedSessionIds.current);
           localStorage.setItem('processedStudyGuideSessions', JSON.stringify(arr));
-          console.log('Saved processed session to localStorage:', data.sessionId);
         } catch (e) {
           console.error('Failed to save processed session', e);
         }
@@ -93,11 +89,9 @@ const StudyGuideTab = ({ user }) => {
             }
           }, notifData);
           
-          console.log('New Chat Webhook URL (from n8n): ', data.redirectUrl);
           
           // AUTO-REDIRECT: Open Study Guide Chat automatically without requiring user to click notification
           setTimeout(() => {
-            console.log('Auto-redirecting to Study Guide tab with session:', data.sessionId);
             window.location.hash = 'study_guide';
             // Force page reload to trigger auto-open logic in ChatInterfaceNew
             window.location.reload();
@@ -172,7 +166,6 @@ const StudyGuideTab = ({ user }) => {
         }
       }, 200 + (index * 100)); // Stagger animation for multiple files
     });
-    console.log(`Selected ${uploadedFiles.length} file(s) ready to upload`);
   }, [allowedTypes]);
 
   const handleDragOver = useCallback((e) => {
@@ -217,7 +210,6 @@ const StudyGuideTab = ({ user }) => {
 
     const userId = user.uid; // Use Firebase user.uid directly
     
-    console.log('Authenticated user ID (Firebase):', userId, 'Email:', user.email);
 
     setFiles(prevFiles => prevFiles.map(file => ({ ...file, status: 'uploading', progress: 0, sessionId })));
 

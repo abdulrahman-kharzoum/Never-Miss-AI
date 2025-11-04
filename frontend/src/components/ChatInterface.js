@@ -176,9 +176,6 @@ const ChatInterface = ({ user, onSignOut }) => {
       const refreshToken = localStorage.getItem('refreshToken');
       
       // Debug: Log tokens being sent
-      console.log('🔍 Sending to N8N:');
-      console.log('  Access Token:', accessToken ? accessToken.substring(0, 20) + '...' : 'EMPTY');
-      console.log('  Refresh Token:', refreshToken ? refreshToken.substring(0, 20) + '...' : 'EMPTY');
       
       // Send to N8N with tokens
       const sessionWebhook = getSessionWebhook(currentSession);
@@ -295,9 +292,6 @@ const ChatInterface = ({ user, onSignOut }) => {
         const refreshToken = localStorage.getItem('refreshToken');
         
         // Debug: Log tokens being sent
-        console.log('🔍 Sending AUDIO to N8N:');
-        console.log('  Access Token:', accessToken ? accessToken.substring(0, 20) + '...' : 'EMPTY');
-        console.log('  Refresh Token:', refreshToken ? refreshToken.substring(0, 20) + '...' : 'EMPTY');
         
         // Strip the data URL prefix to send only the raw base64 string
         const base64AudioForN8N = base64AudioDataUrl.split(',')[1];

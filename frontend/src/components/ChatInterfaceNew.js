@@ -58,7 +58,6 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
   // Create a new session and associate it with a webhook URL. We persist webhook mapping in localStorage
   const createSessionWithWebhook = useCallback(async (webhookUrl, source = 'tab') => {
     try {
-      console.log('Creating session with webhook:', webhookUrl, 'source:', source);
 
       // Support fallback user id from tokenManager or localStorage when `user` prop isn't available yet
       const fallbackUserId = tokenManager.getUserId() || localStorage.getItem('userId') || null;
@@ -170,10 +169,8 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
             );
             
             if (existingSession) {
-              console.log('Study Guide session already exists, skipping creation:', existingSession.session_id);
               setSessions(data || []);
             } else {
-              console.log('Creating new Study Guide session with webhook:', webhookToUse);
               await createSessionWithWebhook(webhookToUse, source);
               // Reload sessions after creating new one
               const { data: updatedData } = await supabase
@@ -233,7 +230,6 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         if (session) {
           setActiveTab('study_guide');
           setCurrentSession(session);
-          console.log('Auto-opened Study Guide session:', studySessionId);
           // Clean up flags
           try {
             localStorage.removeItem('autoOpenStudyGuide');
@@ -261,7 +257,6 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
     }
 
     const sessionId = currentSession.session_id;
-    console.log(`Setting up real-time subscription for session: ${sessionId}`);
 
     const channel = supabase.channel(`chat-messages-${sessionId}`);
 
@@ -275,7 +270,6 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
           filter: `session_id=eq.${sessionId}`,
         },
         (payload) => {
-          console.log('Real-time message received:', payload.new);
 
           // If the incoming message contains a webhook_url (some n8n flows include it per-message),
           // persist it for the session so outgoing messages route correctly.
@@ -306,7 +300,6 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
       )
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log(`Successfully subscribed to channel: ${channel.topic}`);
         }
         if (status === 'CHANNEL_ERROR') {
           console.error('Subscription error:', err);
@@ -318,7 +311,6 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
     // Cleanup function to remove the subscription when the component unmounts or session changes
     return () => {
-      console.log(`Cleaning up subscription for session: ${sessionId}`);
       supabase.removeChannel(channel);
     };
   }, [currentSession?.session_id]); // Depend only on the stable session ID

@@ -29,7 +29,6 @@ function App() {
     tokenManager.loadTokens();
 
     const loadingTimeout = setTimeout(() => {
-      console.log('⏱️ Loading timeout - Firebase auth check complete');
       setLoading(false);
     }, 15000);
 
@@ -40,10 +39,8 @@ function App() {
         const existingAccessToken = localStorage.getItem('accessToken');
         const existingUserId = localStorage.getItem('userId');
         if (existingAccessToken && existingUserId === currentUser.uid) {
-          console.log('🔄 Page refresh detected - loading tokens from localStorage');
           tokenManager.loadTokens();
         } else {
-          console.log('🆕 New session detected - tokens should be set by handleGoogleSignIn');
         }
       } else {
         setUser(null);
@@ -84,10 +81,6 @@ function App() {
       // A refresh token is usually only provided on the very first authorization
       const googleRefreshToken = user.refreshToken || credential?.refreshToken;
       
-      console.log("✅ Google Auth Successful!");
-      console.log("🔑 Access Token:", googleAccessToken);
-      console.log("🔄 Refresh Token:", googleRefreshToken);
-      console.log("👤 User Object:", user);
 
       if (!googleAccessToken) {
         throw new Error('Failed to get Google access token');
@@ -137,7 +130,6 @@ function App() {
       setUser(null);
       // Use the new function to only clear session-specific tokens
       tokenManager.clearSessionTokens();
-      console.log('✅ User signed out, session tokens cleared');
     } catch (error) {
       console.error('❌ Error signing out:', error);
     }

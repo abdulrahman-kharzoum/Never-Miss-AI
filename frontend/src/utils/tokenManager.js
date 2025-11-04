@@ -64,13 +64,11 @@ class TokenManager {
     if (this.accessToken) {
       try {
         await axios.get(`https://oauth2.googleapis.com/tokeninfo?access_token=${this.accessToken}`);
-        console.log('✅ Current token is valid with Google.');
         return this.accessToken;
       } catch (error) {
         console.warn('⚠️ Current token is invalid or expired. Proceeding to refresh...');
       }
     } else {
-      console.log('ℹ️ No access token found locally. Proceeding to refresh...');
     }
 
     // 2. If there's no token or if it's invalid, we must refresh it.
@@ -80,7 +78,6 @@ class TokenManager {
     }
 
     try {
-      console.log('🔄 Calling backend to get a new access token...');
       const response = await axios.post(`${BACKEND_URL}/api/auth/refresh-token`, {
         user_id: this.userId,
       }, {
@@ -92,9 +89,7 @@ class TokenManager {
       const { accessToken, expiresAt, refreshToken } = response.data;
 
       // 3. As you requested, validate the NEWLY received token with Google before using it.
-      console.log('🔄 Verifying the new token with Google...');
       await axios.get(`https://oauth2.googleapis.com/tokeninfo?access_token=${accessToken}`);
-      console.log('✅ New token is verified and valid!');
 
       // 4. Store the new, verified tokens.
       this.setTokens(accessToken, refreshToken, this.userId, expiresAt);

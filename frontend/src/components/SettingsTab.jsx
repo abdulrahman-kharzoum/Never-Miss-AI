@@ -31,7 +31,6 @@ const SettingsTab = ({ user, onSignOut }) => {
         setFireflyApiKey('');
       }
     } catch (error) {
-      console.log('No settings found, will create on first save');
     }
   };
 
