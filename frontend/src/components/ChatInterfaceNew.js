@@ -1134,7 +1134,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
                 className="new-chat-header-button"
                 style={{
                   padding: '8px 16px',
-                  backgroundColor: theme === 'light' ? '#000' : 'var(--primary-color)',
+                  backgroundColor: theme === 'light' ? 'var(--accent-color-1)' : 'var(--primary-color)',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -1148,11 +1148,11 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
                   marginRight: '12px'
                 }}
                 onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = theme === 'light' ? '#111' : 'var(--primary-hover)';
+                  e.target.style.backgroundColor = theme === 'light' ? 'var(--accent-color-2)' : 'var(--primary-hover)';
                   e.target.style.transform = 'scale(1.05)';
                 }}
                 onMouseLeave={(e) => {
-                e.target.style.backgroundColor = theme === 'light' ? '#000' : 'var(--primary-color)';
+                e.target.style.backgroundColor = theme === 'light' ? 'var(--accent-color-1)' : 'var(--primary-color)';
                 e.target.style.transform = 'scale(1)';
               }}
               title="Start a new conversation"
@@ -1196,24 +1196,50 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                 </div>
-                <div className="empty-state-title">Start a conversation</div>
-                <div className="empty-state-description">
-                  I can help you manage emails, calendar events, and tasks.
-                </div>
-                <div className="empty-state-suggestions">
-                  <div className="suggestion-item" onClick={() => setInputMessage('Show me unread emails from today')}>
-                    💬 "Show me unread emails from today"
-                  </div>
-                  <div className="suggestion-item" onClick={() => setInputMessage('Schedule a meeting tomorrow at 2 PM')}>
-                    📅 "Schedule a meeting tomorrow at 2 PM"
-                  </div>
-                  <div className="suggestion-item" onClick={() => setInputMessage('Create a task to review the report')}>
-                    ✅ "Create a task to review the report"
-                  </div>
-                  <div className="suggestion-item" onClick={() => setInputMessage('Get a summary of my last meeting')}>
-                    📝 "Get a summary of my last meeting"
-                  </div>
-                </div>
+                {activeTab === 'university_guide' ? (
+                  <>
+                    <div className="empty-state-title">🎓 Welcome to DU-Guide</div>
+                    <div className="empty-state-description" style={{ maxWidth: '600px', lineHeight: '1.6' }}>
+                      Your comprehensive assistant for Damascus University – Faculty of Information Technology Engineering (ITE).
+                      I can help you with navigation, academic programs, admissions, and campus facilities.
+                    </div>
+                    <div className="empty-state-suggestions">
+                      <div className="suggestion-item" onClick={() => setInputMessage('How do I get to the Ceremonial Amphitheater from the Red Door?')}>
+                        🗺️ "How do I get to the Ceremonial Amphitheater from the Red Door?"
+                      </div>
+                      <div className="suggestion-item" onClick={() => setInputMessage('What are the admission requirements for the ITE faculty?')}>
+                        📋 "What are the admission requirements for the ITE faculty?"
+                      </div>
+                      <div className="suggestion-item" onClick={() => setInputMessage('Tell me about the specialization options available.')}>
+                        🎯 "Tell me about the specialization options available."
+                      </div>
+                      <div className="suggestion-item" onClick={() => setInputMessage('Where is Dr. Ammar Joukhadar\'s office located?')}>
+                        📍 "Where is Dr. Ammar Joukhadar's office located?"
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="empty-state-title">Start a conversation</div>
+                    <div className="empty-state-description">
+                      I can help you manage emails, calendar events, and tasks.
+                    </div>
+                    <div className="empty-state-suggestions">
+                      <div className="suggestion-item" onClick={() => setInputMessage('Show me unread emails from today')}>
+                        💬 "Show me unread emails from today"
+                      </div>
+                      <div className="suggestion-item" onClick={() => setInputMessage('Schedule a meeting tomorrow at 2 PM')}>
+                        📅 "Schedule a meeting tomorrow at 2 PM"
+                      </div>
+                      <div className="suggestion-item" onClick={() => setInputMessage('Create a task to review the report')}>
+                        ✅ "Create a task to review the report"
+                      </div>
+                      <div className="suggestion-item" onClick={() => setInputMessage('Get a summary of my last meeting')}>
+                        📝 "Get a summary of my last meeting"
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           ) : (

@@ -59,7 +59,7 @@ const DashboardTab = ({ user, onSwitchToChat }) => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-6">
+    <div className="max-w-7xl mx-auto p-6 space-y-6 h-full overflow-y-auto">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
       
       {/* Stats Grid */}

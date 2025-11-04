@@ -1,67 +1,159 @@
-# Google OAuth Authentication for n8n Integration
+# NeverMiss AI - Your AI-Powered Productivity Assistant
 
-This is a simple web application that allows users to authenticate with their Google account, retrieve access tokens, and securely store them for n8n workflow integration.
+**Never miss what matters most.** NeverMiss AI is an intelligent productivity platform that transforms how you manage your digital life through conversational AI. Get AI-powered assistance for planning your day, understanding university content, and creating study materials from your documents.
 
-## 🎯 Features
+## 🎯 Key Features
 
-✅ **Google OAuth Authentication** - Sign in with Google account  
-✅ **Multiple Scopes Support** - Gmail, Google Calendar, Google Drive, Profile  
-✅ **Secure Token Storage** - Encrypted token storage in MongoDB  
-✅ **n8n Integration Ready** - API endpoint for n8n workflows  
-✅ **Simple UI** - Clean interface with user profile display  
-✅ **Hidden Token** - Token hidden by default with show/copy option  
+### 📅 **Plan Your Day**
+- AI-powered daily planning assistant
+- Smart task organization and prioritization
+- Natural conversation interface
+- Voice interaction support
+- Context-aware suggestions
+
+### � **University Guide (DU-Guide)**
+- Interactive AI assistant for Damascus University students
+- Information about faculties, departments, and programs
+- Academic guidance and course recommendations
+- Admission requirements and procedures
+- Campus navigation and resources
+
+### 📚 **Study Guide Chat**
+- Upload and analyze PDF, CSV, Excel, and other documents
+- AI-powered document understanding
+- Generate summaries from your files
+- Create quizzes automatically from content
+- Extract key insights and study notes
+- RAG (Retrieval Augmented Generation) for accurate answers
+- Real-time file processing with notifications
+
+### 🎙️ **Voice Interaction**
+- Voice recording and playback
+- Audio responses from AI
+- Natural conversation flow
+- Hands-free productivity
+
+### 📊 **Dashboard & Analytics**
+- Track your conversations and sessions
+- View recent activity
+- Monitor study progress
+- Quick access to all features
+
+### 🎨 **Modern UI/UX**
+- Dark/Light theme support
+- Responsive design for all devices
+- Smooth animations and transitions
+- Intuitive tab-based navigation
+- Mobile-friendly sidebar
 
 ## 🏗️ Architecture
 
 ```
-Frontend (React + Firebase) → Backend (FastAPI) → MongoDB
+Frontend (React + Firebase Auth) → Backend (FastAPI) → Supabase
                 ↓
           Google OAuth
                 ↓
-         n8n Workflows
+         N8N AI Workflows → OpenAI/LLM
+                ↓
+         Socket.IO (Real-time Updates)
 ```
 
 ## 📁 Project Structure
 
 ```
-/app/
-├── backend/                 # FastAPI backend
+nevermiss-ai/
+├── backend/                 # FastAPI backend server
 │   ├── server.py           # Main API server
 │   ├── requirements.txt    # Python dependencies
-│   └── .env               # Environment variables
-├── frontend/               # React frontend
+│   └── README.md          # Backend documentation
+├── frontend/               # React frontend application
 │   ├── src/
-│   │   ├── App.js         # Main component
+│   │   ├── components/    # React components
+│   │   │   ├── ChatInterfaceNew.js  # Main chat interface
+│   │   │   ├── StudyGuideTab.jsx    # File upload & RAG
+│   │   │   ├── DashboardTab.jsx     # Analytics dashboard
+│   │   │   ├── SettingsTab.jsx      # User settings
+│   │   │   ├── AboutTab.jsx         # About page
+│   │   │   └── ...
+│   │   ├── context/       # React context providers
+│   │   ├── utils/         # Utility functions
 │   │   ├── firebase.js    # Firebase configuration
-│   │   └── ...
+│   │   └── App.js         # Root component
 │   ├── package.json       # Node dependencies
-│   └── .env              # Frontend environment variables
+│   └── README.md         # Frontend documentation
+├── scripts/               # Database & setup scripts
 └── README.md             # This file
 ```
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Firebase project with Google OAuth enabled
-- MongoDB running locally
-- Node.js and Python installed
+- **Node.js** (v16 or higher)
+- **Python** (v3.8 or higher)
+- **Firebase Account** (for authentication)
+- **Supabase Account** (for database)
+- **N8N Instance** (for AI workflows)
 
-### Services Status
-Check if all services are running:
+### Installation
+
+#### 1. Clone the Repository
 ```bash
-sudo supervisorctl status
+git clone https://github.com/abdulrahman-kharzoum/nevermiss-ai.git
+cd nevermiss-ai
 ```
 
-Expected output:
-```
-backend    RUNNING
-frontend   RUNNING
-mongodb    RUNNING
-```
-
-### Restart Services
+#### 2. Backend Setup
 ```bash
-sudo supervisorctl restart all
+cd backend
+pip install -r requirements.txt
+
+# Create .env file with your credentials
+cp .env.example .env
+# Edit .env with your configuration
+
+# Run the backend server
+python server.py
+```
+
+The backend will start on `http://localhost:8001`
+
+#### 3. Frontend Setup
+```bash
+cd frontend
+npm install
+
+# Create .env file with your Firebase credentials
+cp .env.example .env
+# Edit .env with your Firebase configuration
+
+# Run the frontend development server
+npm start
+```
+
+The frontend will start on `http://localhost:3000`
+
+### Environment Variables
+
+#### Backend (.env)
+```env
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_key
+N8N_WEBHOOK_URL=your_n8n_chat_webhook
+STUDY_GUIDE_WEBHOOK=your_n8n_study_guide_webhook
+UNIVERSITY_GUIDE_WEBHOOK=your_n8n_university_guide_webhook
+PORT=8001
+```
+
+#### Frontend (.env)
+```env
+REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
+REACT_APP_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=your_project_id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+REACT_APP_FIREBASE_APP_ID=your_app_id
+REACT_APP_SUPABASE_URL=your_supabase_url
+REACT_APP_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 ## 🔧 Configuration
