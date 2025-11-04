@@ -25,7 +25,7 @@ services:
     container_name: nerver-frontend
     ports:
       # Serve the frontend on host port 3001 to avoid common port conflicts
-      - "3001:88"
+      - "3032:88"
     depends_on:
       - backend
 
