@@ -30,7 +30,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
   // Resolve user identification fields
   const resolvedUserName = user?.displayName || user?.name || (user?.email ? user.email.split('@')[0] : '');
   const resolvedUserEmail = user?.email || '';
-  const resolvedUserId = user?.uid || '';
+  const resolvedUserId = user?.uid || tokenManager.getUserId() || localStorage.getItem('userId') || '';
 
   const { theme } = useTheme();
 
@@ -50,23 +50,25 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
   const createSessionWithWebhook = useCallback(async (webhookUrl, source = 'tab') => {
     try {
       console.log('Creating session with webhook:', webhookUrl, 'source:', source);
+
+      // Support fallback user id from tokenManager or localStorage when `user` prop isn't available yet
+      const fallbackUserId = tokenManager.getUserId() || localStorage.getItem('userId') || null;
+      const uid = user?.uid || fallbackUserId;
+      if (!uid) {
+        console.error('No user ID available for session creation');
+        return null;
+      }
+
       const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       const insertPayload = {
-        user_id: user.uid,
+        user_id: uid,
         session_id: sessionId,
         title: source === 'study_guide' ? 'Study Guide Chat' : source === 'university_guide' ? 'University Guide' : 'New Conversation',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        message_count: 0,
+        message_count: 0
       };
-
-      // Try to include webhook_url field if table supports it (fail silently otherwise)
-      try {
-        insertPayload.webhook_url = webhookUrl;
-      } catch (e) {
-        // ignore
-      }
 
       const { data, error } = await supabase
         .from('chat_sessions')
@@ -77,11 +79,11 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
       let createdSession = null;
       
       if (error) {
-        // If insertion fails because of unknown column, retry without webhook_url
+        // If insertion fails because of unknown column, retry without any extra webhook fields
         if (error.message && error.message.includes('column')) {
           const { data: retryData, error: retryErr } = await supabase
             .from('chat_sessions')
-            .insert({ ...insertPayload, webhook_url: undefined })
+            .insert(insertPayload)
             .select()
             .single();
           if (retryErr) throw retryErr;
@@ -107,27 +109,9 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         console.error('Failed to persist session->webhook mapping', e);
       }
 
-      // Update the DB row to include webhook_url and metadata if the table supports it.
-      try {
-        const updatePayload = {
-          webhook_url: webhookUrl,
-          metadata: JSON.stringify({ source })
-        };
-        const { error: updateErr } = await supabase
-          .from('chat_sessions')
-          .update(updatePayload)
-          .eq('session_id', sessionId);
-
-        if (updateErr) {
-          // If the update fails because the column does not exist, ignore.
-          if (!(updateErr.message && updateErr.message.includes('column'))) {
-            console.warn('Failed to update session metadata:', updateErr);
-          }
-        }
-      } catch (e) {
-        // ignore errors related to missing columns or permission issues
-        console.debug('Ignored error updating webhook metadata:', e);
-      }
+      // Do not attempt to write webhook_url/metadata to the DB because the table
+      // schema may not include those columns. We persist the mapping in localStorage
+      // and only update session fields that definitely exist (title/updated_at/message_count).
 
       return createdSession;
     } catch (error) {
@@ -242,22 +226,8 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
             const maybeWebhook = payload.new?.webhook_url || payload.new?.webhook || payload.new?.data?.webhook || payload.new?.metadata?.webhook_url || payload.new?.data?.webhook_url;
             if (maybeWebhook) {
               try { localStorage.setItem(`session_webhook_${sessionId}`, maybeWebhook); } catch (e) { /* ignore */ }
-              // Try to persist to chat_sessions.webhook_url if column exists
-              (async () => {
-                try {
-                  const { error: upErr } = await supabase
-                    .from('chat_sessions')
-                    .update({ webhook_url: maybeWebhook })
-                    .eq('session_id', sessionId);
-                  if (upErr && upErr.message && upErr.message.includes('column')) {
-                    // ignore missing column
-                  } else if (upErr) {
-                    console.warn('Failed to update chat_sessions.webhook_url:', upErr);
-                  }
-                } catch (e) {
-                  // ignore
-                }
-              })();
+              // Do NOT attempt to write webhook_url to the DB here; the table schema may not include that column.
+              // Keep the mapping in localStorage only to avoid Supabase 400 errors.
             }
           } catch (e) {
             // ignore
@@ -322,19 +292,10 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         for (const m of msgs) {
           const maybe = m?.webhook_url || m?.webhook || m?.data?.webhook || m?.metadata?.webhook_url || m?.data?.webhook_url;
           if (maybe) {
-            try { localStorage.setItem(`session_webhook_${sessionId}`, maybe); } catch (e) { /* ignore */ }
-            // Attempt to persist into chat_sessions table
-            try {
-              const { error: upErr } = await supabase
-                .from('chat_sessions')
-                .update({ webhook_url: maybe })
-                .eq('session_id', sessionId);
-              if (upErr && upErr.message && upErr.message.includes('column')) {
-                // ignore missing column
-              }
-            } catch (e) { /* ignore */ }
-            break; // first found is enough
-          }
+              try { localStorage.setItem(`session_webhook_${sessionId}`, maybe); } catch (e) { /* ignore */ }
+              // Do not attempt to update DB schema (webhook_url may not exist) — keep mapping in localStorage
+              break; // first found is enough
+            }
         }
       } catch (e) { /* ignore */ }
     } catch (error) {
@@ -346,25 +307,60 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
   const sendMessage = async () => {
     if (!inputMessage.trim() || sending) return;
+    // Allow fallback user id from tokenManager or localStorage when `user` prop is missing
+    const uid = user?.uid || tokenManager.getUserId() || localStorage.getItem('userId') || null;
+    if (!uid) {
+      console.error('No user ID available');
+      return;
+    }
 
     // If no session exists, create one based on the active tab
     let sessionToUse = currentSession;
     if (!sessionToUse) {
       let webhookUrl;
       let source;
-      if (activeTab === 'university_guide') {
-        webhookUrl = UNIVERSITY_GUIDE_WEBHOOK;
-        source = 'university_guide';
-      } else if (activeTab === 'study_guide') {
-        webhookUrl = localStorage.getItem('chatWebhookUrl') || STUDY_GUIDE_WEBHOOK;
-        source = 'study_guide';
-      } else {
-        webhookUrl = PLAN_WEBHOOK || N8N_WEBHOOK_URL;
-        source = 'chat';
+      
+      // Determine webhook based on active tab
+      switch (activeTab) {
+        case 'university_guide':
+          webhookUrl = UNIVERSITY_GUIDE_WEBHOOK;
+          source = 'university_guide';
+          break;
+        case 'study_guide':
+          webhookUrl = localStorage.getItem('chatWebhookUrl') || STUDY_GUIDE_WEBHOOK;
+          source = 'study_guide';
+          break;
+        default:
+          webhookUrl = PLAN_WEBHOOK || N8N_WEBHOOK_URL;
+          source = 'chat';
       }
-      const newSession = await createSessionWithWebhook(webhookUrl, source);
-      sessionToUse = newSession || currentSession;
-      if (!sessionToUse) {
+      
+      if (!webhookUrl) {
+        console.error('No webhook URL available for session creation');
+        setSending(false);
+        return;
+      }
+      
+      try {
+        // Create new session and wait for it to be properly initialized
+        const newSession = await createSessionWithWebhook(webhookUrl, source);
+        if (!newSession) {
+          console.error('Failed to create new session');
+          setSending(false);
+          return;
+        }
+        
+        // Store webhook URL for the session
+        localStorage.setItem(`session_webhook_${newSession.session_id}`, webhookUrl);
+        
+        // Update current session
+        sessionToUse = newSession;
+        setCurrentSession(newSession);
+        
+        // Small delay to ensure state is updated
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error('Error creating session:', error);
         setSending(false);
         return;
       }
@@ -376,7 +372,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
     const messageObject = {
       session_id: sessionToUse.session_id,
-      user_id: user.uid,
+      user_id: uid,
       message_type: 'text',
       content: userMessage,
       sender: 'user',
@@ -405,6 +401,14 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         // If saving fails, you might want to mark the message as "failed to send"
         console.error(userMsgError);
         throw userMsgError;
+      }
+
+      // Refresh messages from the DB to ensure the optimistic message is present
+      // and to reconcile any server-generated fields (ids, timestamps).
+      try {
+        await loadMessages(sessionToUse.session_id);
+      } catch (e) {
+        console.error('Failed to reload messages after insert:', e);
       }
 
       // Do NOT block on token refresh; proceed even if we don't have a fresh token.
@@ -444,50 +448,100 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         );
       }
 
-      // Update session metadata
-  if (currentSession?.title === 'New Conversation' && messages.length === 1) {
-        const conversationTitle = userMessage.length > 50 
-          ? userMessage.substring(0, 50) + '...' 
-          : userMessage;
-        
-        const updated_at = new Date().toISOString();
+      // Update session metadata using the session we actually used/created for this send.
+      try {
+        const newMessageCount = (messages || []).length;
+        const isNewConv = !sessionToUse.title || sessionToUse.title === 'New Conversation';
 
-        // Update the session in the database
-        await supabase
-          .from('chat_sessions')
-          .update({ 
-            title: conversationTitle,
-            updated_at: updated_at,
-            message_count: 2 // User and eventual AI message
-          })
-          .eq('session_id', currentSession.session_id);
-        
-        // Instead of re-fetching all sessions, update the local state directly
-        const updatedSessions = sessions.map(session =>
-          session.id === currentSession.id
-            ? { ...session, title: conversationTitle, updated_at: updated_at, message_count: 2 }
-            : session
-        );
-        setSessions(updatedSessions);
-        
-      } else {
-        await supabase
-          .from('chat_sessions')
-          .update({
-            updated_at: new Date().toISOString(),
-            message_count: messages.length + 1
-          })
-          .eq('session_id', currentSession.session_id);
+        if (isNewConv && newMessageCount === 0) {
+          // Build a conversation title from the user's first message.
+          // Prefer a short few-word summary instead of the raw long text.
+          const makeTitleFromMessage = (msg) => {
+            if (!msg) return 'Conversation';
+            const trimmed = msg.trim();
+            const words = trimmed.split(/\s+/);
+            // Use up to the first 6 words, or fall back to ~60 characters
+            const MAX_WORDS = 6;
+            const MAX_CHARS = 60;
+            if (words.length <= MAX_WORDS && trimmed.length <= MAX_CHARS) return trimmed;
+            const firstWords = words.slice(0, MAX_WORDS).join(' ');
+            return firstWords + '...';
+          };
+
+          const conversationTitle = makeTitleFromMessage(userMessage);
+          const updated_at = new Date().toISOString();
+
+          // Optimistically update UI so the user sees the new title immediately.
+          setCurrentSession((prev) => prev ? { ...prev, title: conversationTitle, updated_at: updated_at, message_count: newMessageCount + 1 } : prev);
+          const updatedSessionsLocal = (sessions || []).map((s) =>
+            s && s.session_id === sessionToUse.session_id
+              ? { ...s, title: conversationTitle, updated_at: updated_at, message_count: newMessageCount + 1 }
+              : s
+          );
+          setSessions(updatedSessionsLocal);
+
+          // Persist to DB but handle errors gracefully and log them.
+          try {
+            const { data: updateData, error: updateError } = await supabase
+              .from('chat_sessions')
+              .update({
+                title: conversationTitle,
+                updated_at: updated_at,
+                message_count: newMessageCount + 1
+              })
+              .eq('session_id', sessionToUse.session_id)
+              .select()
+              .single();
+
+            if (updateError) {
+              console.error('Failed to update session title in DB:', updateError);
+            } else if (updateData) {
+              // Ensure local state reflects any DB-normalized values
+              setCurrentSession(updateData);
+              const updatedSessionsFromDb = (sessions || []).map((s) =>
+                s && s.session_id === updateData.session_id ? { ...s, ...updateData } : s
+              );
+              setSessions(updatedSessionsFromDb);
+            }
+          } catch (err) {
+            console.error('Unexpected error updating session title:', err);
+          }
+        } else {
+          // Normal update for subsequent messages: update DB and keep UI in sync.
+          try {
+            const { data: updateData, error: updateError } = await supabase
+              .from('chat_sessions')
+              .update({
+                updated_at: new Date().toISOString(),
+                message_count: newMessageCount + 1
+              })
+              .eq('session_id', sessionToUse.session_id)
+              .select()
+              .single();
+
+            if (updateError) {
+              console.error('Failed updating session metadata:', updateError);
+            } else if (updateData) {
+              setCurrentSession(updateData);
+              const updatedSessionsFromDb = (sessions || []).map((s) =>
+                s && s.session_id === updateData.session_id ? { ...s, ...updateData } : s
+              );
+              setSessions(updatedSessionsFromDb);
+            }
+          } catch (err) {
+            console.error('Unexpected error updating session metadata:', err);
+          }
+        }
+      } catch (e) {
+        console.error('Failed updating session metadata:', e);
       }
 
     } catch (error) {
       console.error('Error sending message:', error);
-      
-      // Show user-friendly error message
-      const errorMessage = error.message || 'Failed to send message. Please try again.';
-      alert(`❌ Error: ${errorMessage}\n\nPlease check:\n1. N8N service is running\n2. Webhook URL is correct\n3. Network connection is stable`);
-      
       setSending(false); // Stop loading on error
+      
+      // Silently continue - the error is logged but we don't show a popup
+      // The real-time subscription will handle showing the AI response when it arrives
     } finally {
       if (textareaRef.current) {
         textareaRef.current.focus();
@@ -586,7 +640,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
       } catch (error) {
         console.error('Error sending audio:', error);
-        alert('Failed to send audio message.');
+        // Do not show blocking alert; log and stop the spinner
         setSending(false); // Stop loading on error
       }
     };
