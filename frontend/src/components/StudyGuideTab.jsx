@@ -22,6 +22,7 @@ const StudyGuideTab = () => {
   const { addNotification } = useNotification();
 
   const socket = useRef(null);
+  const processedSessionIds = useRef(new Set()); // Track which sessions have been completed to prevent duplicates
 
   useEffect(() => {
     socket.current = io(process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000');
@@ -37,7 +38,18 @@ const StudyGuideTab = () => {
       );
 
       // Use notification system instead of alert
-      if (data) {
+      // ONLY create a notification on COMPLETED status to avoid duplicates
+      // AND only if this sessionId hasn't been processed before
+      if (data && data.status === 'completed') {
+        // DEDUPLICATION: Skip if we've already processed this sessionId
+        if (processedSessionIds.current.has(data.sessionId)) {
+          console.log(`Session ${data.sessionId} already processed, skipping duplicate completion event`);
+          return;
+        }
+
+        // Mark this sessionId as processed
+        processedSessionIds.current.add(data.sessionId);
+
         const message = data.message || `Files for session ${data.sessionId} updated`;
         // Compose notification payload
         const notifData = {
@@ -48,20 +60,21 @@ const StudyGuideTab = () => {
           source: 'file_processing', // so bell counts only file processing notifications
         };
 
-        // If completed with a redirectUrl, add a clickable notification to open chat
-        if (data.status === 'completed' && data.redirectUrl) {
+        // When completed with a redirectUrl, add a clickable notification
+        if (data.redirectUrl) {
           addNotification(message, 'success', 10000, (d) => {
             try {
+              // Store webhook URL and session info for Study Guide tab
               localStorage.setItem('chatWebhookUrl', d.redirectUrl);
-              window.open('/chat', '_blank');
+              localStorage.setItem('studyGuideSessionId', d.sessionId);
+              localStorage.setItem('autoOpenStudyGuide', 'true');
+              // Redirect to study guide tab (same window)
+              window.location.href = '/#study_guide';
             } catch (e) {
-              console.error('Failed to open chat window', e);
+              console.error('Failed to open study guide', e);
             }
           }, notifData);
           console.log('New Chat Webhook URL (from n8n): ', data.redirectUrl);
-        } else {
-          // pending or other statuses
-          addNotification(message, 'info', 10000, null, notifData);
         }
       }
     });
