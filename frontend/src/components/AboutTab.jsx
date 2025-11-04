@@ -18,14 +18,29 @@ const AboutTab = () => {
       description: 'Organize Google Tasks with AI suggestions and automation'
     },
     {
-      icon: '🎙️',
-      title: 'Voice Interaction',
-      description: 'Talk to your AI assistant and get voice responses'
+      icon: '🎓',
+      title: 'University Guide',
+      description: 'Course suggestions, program planning and resource recommendations for students'
+    },
+    {
+      icon: '📚',
+      title: 'Study Guide',
+      description: 'Generate study plans, summaries and prioritized learning paths'
+    },
+    {
+      icon: '📝',
+      title: 'Quiz Creator',
+      description: 'Auto-generate quizzes from course materials to test learning'
     },
     {
       icon: '📝',
       title: 'Meeting Notes',
-      description: 'Automated transcription via Fireflies integration'
+      description: 'Automated transcription and meeting summaries (e.g. via Fireflies integration)'
+    },
+    {
+      icon: '📄',
+      title: 'Document Summaries',
+      description: 'Summarize content from PDF, CSV and Excel files into concise notes'
     },
     {
       icon: '🔒',
@@ -33,20 +48,6 @@ const AboutTab = () => {
       description: 'Bank-level encryption for all your data'
     }
   ];
-
-  // Add study / university features
-  features.push(
-    {
-      icon: '🎓',
-      title: 'University Guide',
-      description: 'Personalized study plans and university application guidance'
-    },
-    {
-      icon: '📚',
-      title: 'Study Guide & Quiz Creator',
-      description: 'Upload PDF/CSV/Excel to generate summaries, flashcards, and quizzes automatically'
-    }
-  );
 
   const skills = [
     'Front-end Development (Flutter, React)',
@@ -75,10 +76,10 @@ const AboutTab = () => {
         </div>
         <div className="relative max-w-5xl mx-auto text-center animate-fade-in">
           <h1 className="text-6xl font-bold text-white mb-6 tracking-tight">
-            nerver miss ai
+            Nerver Miss AI
           </h1>
           <p className="text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed">
-            AI-powered study and productivity assistant — summaries, quizzes, calendar & email automation
+            An AI assistant that keeps you on top of work, school, and life — from meetings to study material
           </p>
           <div className="mt-8 animate-bounce">
             <svg className="w-8 h-8 text-white/70 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,10 +106,10 @@ const AboutTab = () => {
         <div className="mb-20">
           <div className="text-center mb-12">
             <h2 className="text-5xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent mb-4">
-              nerver miss ai: Your AI-Powered Study & Productivity Assistant
+              Nerver Miss AI: Your AI-Powered Productivity Assistant
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-              An intelligent platform that transforms how you study and manage your digital life
+              An intelligent platform that transforms how you manage your digital life
             </p>
           </div>
 
@@ -175,8 +176,8 @@ const AboutTab = () => {
 
             {/* Right Side - Content */}
             <div className="flex flex-col justify-center">
-              <h2 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-8">
-                Built with Expertise
+              <h2 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-3">
+                Meet Abdulrahman Kharzoum
               </h2>
               <p className="text-xl text-purple-600 dark:text-purple-400 font-semibold mb-6">
                 Front-end Developer & AI Automation Specialist
@@ -197,7 +198,7 @@ const AboutTab = () => {
                 </p>
                 <p className="font-semibold text-purple-600 dark:text-purple-400">
                   After months of development, combining my experience in React, Flutter, 3D development, 
-                  and over a year of AI automation with N8N, NeverMiss AI was born.
+                  and over a year of AI automation with N8N, Nerver Miss AI was born.
                 </p>
               </div>
             </div>
