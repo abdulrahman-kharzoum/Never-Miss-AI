@@ -15,7 +15,16 @@ import '../ChatInterfaceNew.css';
 import { useTheme } from '../context/ThemeContext';
 
 const ChatInterfaceNew = ({ user, onSignOut }) => {
-  const [activeTab, setActiveTab] = useState('chat');
+  // Initialize activeTab from URL hash if present
+  const getInitialTab = () => {
+    const hash = window.location.hash.replace('#', '');
+    if (['chat', 'university_guide', 'study_guide', 'dashboard', 'settings', 'pricing', 'about'].includes(hash)) {
+      return hash;
+    }
+    return 'chat';
+  };
+  
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const [sessions, setSessions] = useState([]);
   const [currentSession, setCurrentSession] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -122,12 +131,24 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
   const loadSessions = useCallback(async () => {
     try {
-      // Check for webhook from file upload (Study Guide) and create session only for that case
+      // Load all existing sessions first
+      const { data, error } = await supabase
+        .from('chat_sessions')
+        .select('*')
+        .eq('user_id', user.uid)
+        .order('updated_at', { ascending: false});
+
+      if (error) throw error;
+
+      let sessionsUpdated = false; // Track if we created a new session
+
+      // Check for webhook from file upload (Study Guide) and create session only if it doesn't exist
       try {
         const params = new URLSearchParams(window.location.search || '');
         const webhookFromUrl = params.get('webhook');
         const webhookFromStorage = localStorage.getItem('chatWebhookUrl');
         const webhookToUse = webhookFromUrl || webhookFromStorage;
+        const studySessionId = localStorage.getItem('studyGuideSessionId');
         
         if (webhookToUse) {
           // Only create session if webhook is from Study Guide (file upload)
@@ -141,8 +162,28 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
           const source = inferSourceFromWebhook(webhookToUse);
           
           // Only create session for study_guide (file upload) automatically
+          // BUT check if session already exists to prevent duplicates
           if (source === 'study_guide') {
-            await createSessionWithWebhook(webhookToUse, source);
+            const existingSession = (data || []).find(s => 
+              s.session_id === studySessionId || 
+              (s.webhook_url === webhookToUse && s.title === 'Study Guide Chat')
+            );
+            
+            if (existingSession) {
+              console.log('Study Guide session already exists, skipping creation:', existingSession.session_id);
+              setSessions(data || []);
+            } else {
+              console.log('Creating new Study Guide session with webhook:', webhookToUse);
+              await createSessionWithWebhook(webhookToUse, source);
+              // Reload sessions after creating new one
+              const { data: updatedData } = await supabase
+                .from('chat_sessions')
+                .select('*')
+                .eq('user_id', user.uid)
+                .order('updated_at', { ascending: false});
+              setSessions(updatedData || []);
+              sessionsUpdated = true;
+            }
           }
           
           // Clean up the transient keys
@@ -151,18 +192,13 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         }
       } catch (e) {
         // ignore URL/localStorage parsing errors
+        console.error('Error processing webhook:', e);
       }
 
-      // Load all existing sessions
-      const { data, error } = await supabase
-        .from('chat_sessions')
-        .select('*')
-        .eq('user_id', user.uid)
-        .order('updated_at', { ascending: false});
-
-      if (error) throw error;
-
-      setSessions(data || []);
+      // Set sessions if not already set after creating a new session
+      if (!sessionsUpdated) {
+        setSessions(data || []);
+      }
       
       // Don't set currentSession or create default session
       // Let users start fresh - session will be created when they send first message
@@ -424,13 +460,9 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         throw userMsgError;
       }
 
-      // Refresh messages from the DB to ensure the optimistic message is present
-      // and to reconcile any server-generated fields (ids, timestamps).
-      try {
-        await loadMessages(sessionToUse.session_id);
-      } catch (e) {
-        console.error('Failed to reload messages after insert:', e);
-      }
+      // Do NOT reload messages after insert - we already added optimistically
+      // and reloading causes unnecessary UI refresh/flicker
+      // The real-time subscription will handle receiving AI responses
 
       // Do NOT block on token refresh; proceed even if we don't have a fresh token.
       // N8N can fetch tokens server-side via backend when needed.
@@ -883,7 +915,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
       <div className="chat-interface-container">
         {renderSidebar()}
         <div className="main-chat-area">
-          <StudyGuideTab />
+          <StudyGuideTab user={user} />
         </div>
       </div>
     );

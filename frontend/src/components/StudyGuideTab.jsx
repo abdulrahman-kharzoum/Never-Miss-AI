@@ -1,6 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { supabase } from '../utils/supabaseClient';
 import io from 'socket.io-client';
 import { useNotification } from '../context/NotificationContext';
 
@@ -13,7 +12,7 @@ const ALLOWED_TYPES = [
   'text/plain',
 ];
 
-const StudyGuideTab = () => {
+const StudyGuideTab = ({ user }) => {
   const [files, setFiles] = useState([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef(null);
@@ -86,8 +85,9 @@ const StudyGuideTab = () => {
           // Add notification (still clickable if user wants to click)
           addNotification(message, 'success', 10000, (d) => {
             try {
-              // Redirect to study guide tab (same window)
-              window.location.href = '/#study_guide';
+              // Redirect to study guide tab (same window) - force reload to ensure auto-open logic runs
+              window.location.hash = 'study_guide';
+              window.location.reload();
             } catch (e) {
               console.error('Failed to open study guide', e);
             }
@@ -97,8 +97,11 @@ const StudyGuideTab = () => {
           
           // AUTO-REDIRECT: Open Study Guide Chat automatically without requiring user to click notification
           setTimeout(() => {
-            window.location.href = '/#study_guide';
-          }, 1000); // 1 second delay so user can see the notification first
+            console.log('Auto-redirecting to Study Guide tab with session:', data.sessionId);
+            window.location.hash = 'study_guide';
+            // Force page reload to trigger auto-open logic in ChatInterfaceNew
+            window.location.reload();
+          }, 1500); // 1.5 second delay so user can see the notification first
         }
       }
     });
@@ -125,7 +128,7 @@ const StudyGuideTab = () => {
       id: Math.random().toString(36).substr(2, 9),
       file,
       progress: 0,
-      status: 'preparing', // Start with 'preparing' status
+      status: 'ready', // Files go directly to 'ready' - no auto-processing animation
     }));
 
     setFiles(prev => [...prev, ...uploadedFiles]);
@@ -140,8 +143,7 @@ const StudyGuideTab = () => {
         });
       }
     }, 100);
-
-    // Simulate file preparation progress (reading file, validating, etc.)
+ // Simulate file preparation progress (reading file, validating, etc.)
     uploadedFiles.forEach((fileData, index) => {
       let currentProgress = 0;
       const progressInterval = setInterval(() => {
@@ -170,6 +172,7 @@ const StudyGuideTab = () => {
         }
       }, 200 + (index * 100)); // Stagger animation for multiple files
     });
+    console.log(`Selected ${uploadedFiles.length} file(s) ready to upload`);
   }, [allowedTypes]);
 
   const handleDragOver = useCallback((e) => {
@@ -205,12 +208,16 @@ const StudyGuideTab = () => {
   const uploadFiles = async () => {
     const sessionId = `rag_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
 
-    const { data: { user } } = await supabase.auth.getUser();
-    const userId = user?.id || localStorage.getItem('userId') || 'anonymous';
-    if (!userId) {
-      console.error('User not available');
+    // Check Firebase user (user prop passed from ChatInterfaceNew)
+    if (!user || !user.uid) {
+      console.error('Authentication required. User must be logged in to upload files.');
+      addNotification('Please log in to upload files', 'error', 5000);
       return;
     }
+
+    const userId = user.uid; // Use Firebase user.uid directly
+    
+    console.log('Authenticated user ID (Firebase):', userId, 'Email:', user.email);
 
     setFiles(prevFiles => prevFiles.map(file => ({ ...file, status: 'uploading', progress: 0, sessionId })));
 
