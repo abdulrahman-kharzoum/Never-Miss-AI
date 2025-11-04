@@ -502,4 +502,6 @@ to write directly to Supabase's REST API or to use a server-side helper.
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(sio_app, host="0.0.0.0", port=8001)
+    # Allow overriding the port via the PORT environment variable
+    port = int(os.getenv("PORT", "8011"))
+    uvicorn.run(sio_app, host="0.0.0.0", port=port)

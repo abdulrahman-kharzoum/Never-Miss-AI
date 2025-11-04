@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nerver-backend
+    env_file:
+      - ./backend/.env
+    environment:
+      # If you don't have MongoDB installed locally, docker-compose includes a mongo service below.
+      - MONGO_URL=mongodb://mongo:27017/
+      - DATABASE_NAME=nerver_miss_ai_db
+      - PORT=8011
+    ports:
+      - "8011:8011"
+    depends_on:
+      - mongo
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nerver-frontend
+    ports:
+      # Serve the frontend on host port 3001 to avoid common port conflicts
+      - "3001:80"
+    depends_on:
+      - backend
+
+  mongo:
+    image: mongo:6.0
+    container_name: nerver-mongo
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    ports:
+      # Map host 27018 to container 27017 so you don't conflict with an existing local MongoDB
+      - "27018:27017"
+
+volumes:
+  mongo-data:

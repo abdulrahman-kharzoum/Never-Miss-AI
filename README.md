@@ -1,6 +1,6 @@
 # Google OAuth Authentication for n8n Integration
 
-This is a simple web application that allows users to authenticate with their Google account, retrieve access tokens, and securely store them for n8n workflow integration.
+This is a simple web application that allows users to authenticate with their Google account, retrieve access tokens, and securely store them for n8n workflow integration. The project also includes AI-driven productivity features (email/calendar automation, meeting notes) and study-focused features (university guide, study plans, quiz generator, document summarization).
 
 ## 🎯 Features
 
@@ -43,25 +43,22 @@ Frontend (React + Firebase) → Backend (FastAPI) → MongoDB
 
 ### Prerequisites
 - Firebase project with Google OAuth enabled
-- MongoDB running locally
 - Node.js and Python installed
+- Docker (optional but recommended for easy deployment)
+
+If you plan to run MongoDB locally, install it separately. Alternatively you can run the MongoDB container included in the `docker-compose.yml`.
 
 ### Services Status
-Check if all services are running:
+Check if all services are running (if using supervisor or similar):
 ```bash
 sudo supervisorctl status
 ```
 
-Expected output:
+Expected output (example):
 ```
 backend    RUNNING
 frontend   RUNNING
 mongodb    RUNNING
-```
-
-### Restart Services
-```bash
-sudo supervisorctl restart all
 ```
 
 ## 🔧 Configuration
@@ -73,14 +70,14 @@ DATABASE_NAME=google_auth_db
 API_SECRET_KEY=your-secret-key-change-this-in-production
 N8N_API_KEY=n8n-secure-api-key-change-this
 ENCRYPTION_KEY=your-encryption-key-32-chars-long
+PORT=8011
 ```
 
 **⚠️ IMPORTANT:** Change these values in production!
 
 ### Frontend Configuration (`/app/frontend/.env`)
-Already configured with your Firebase credentials:
-- Firebase API Key: `AIzaSyBjNcwo_56CaFNds5QVAqerk-JDUUEuGIo`
-- Project ID: `product-image-maker`
+Already configured with your Firebase credentials (if used):
+- Firebase API Key: set in `frontend/.env` if required
 
 ## 📡 API Endpoints
 
@@ -167,7 +164,7 @@ The application requests the following Google API scopes:
 1. Add an **HTTP Request** node
 2. Configure:
    - Method: `GET`
-   - URL: `http://localhost:8001/api/auth/get-token/{USER_ID}`
+   - URL: `http://localhost:8011/api/auth/get-token/{USER_ID}`
    - Authentication: Header Auth
    - Header Name: `Authorization`
    - Header Value: `Bearer n8n-secure-api-key-change-this`
@@ -189,10 +186,10 @@ The application requests the following Google API scopes:
 ### Test Backend API
 ```bash
 # Test root endpoint
-curl http://localhost:8001/
+curl http://localhost:8011/
 
 # Test store token (after getting a real token from frontend)
-curl -X POST http://localhost:8001/api/auth/store-token \
+curl -X POST http://localhost:8011/api/auth/store-token \
   -H "Content-Type: application/json" \
   -d '{
     "userId": "test-user",
@@ -203,12 +200,12 @@ curl -X POST http://localhost:8001/api/auth/store-token \
   }'
 
 # Test get token (requires API key)
-curl http://localhost:8001/api/auth/get-token/test-user \
+curl http://localhost:8011/api/auth/get-token/test-user \
   -H "Authorization: Bearer n8n-secure-api-key-change-this"
 ```
 
 ### Test Frontend
-1. Open browser: `http://localhost:3000`
+1. Open browser: `http://localhost:3001` (or the host port you map to the container)
 2. Click "Sign in with Google"
 3. Complete OAuth flow
 4. Verify token is displayed
@@ -246,27 +243,53 @@ tail -100 /var/log/supervisor/frontend.err.log
 ```
 
 ### MongoDB connection issues
+If you don't have MongoDB installed locally you can either install it or use the included Docker service (recommended for quick setup). When running with docker-compose the repository will start a MongoDB container and map it to host port `27018` to avoid conflicts with an existing local MongoDB.
+
+To install MongoDB locally, see: https://www.mongodb.com/try/download/community
+
+If you use systemd/supervisor use:
 ```bash
 sudo supervisorctl status mongodb
 sudo supervisorctl restart mongodb
 ```
 
-### Firebase authentication errors
-1. Check Firebase console for correct OAuth configuration
-2. Verify redirect URIs are properly set
-3. Ensure API is enabled in Google Cloud Console
+If you are using the docker-compose setup below, Docker will create and run a MongoDB container for you.
 
-### Token not being stored
-1. Check backend logs: `tail -100 /var/log/supervisor/backend.err.log`
-2. Verify MongoDB is running: `sudo supervisorctl status mongodb`
-3. Check CORS configuration in `server.py`
+Note: the backend default port has been changed to `8011` to avoid conflicts on some servers; the frontend is served from host port `3001` when using the provided docker-compose mapping. You can override these by setting the `PORT` environment variable for the backend and by changing the host port mapping for the frontend in `docker-compose.yml`.
+
+## Docker / Containerized setup
+
+This repository includes Dockerfiles for both backend and frontend, and a `docker-compose.yml` that will start three services:
+
+- `backend` - the FastAPI + Socket.IO server (default container port 8011, host port mapped to 8011)
+- `frontend` - the built React app served by nginx (container port 80, host port mapped to 3001)
+- `mongo` - optional MongoDB service (container port 27017, host port mapped to 27018)
+
+Quick start (Docker must be installed):
+
+```bash
+# from repository root
+docker-compose build
+docker-compose up -d
+
+# check services
+docker-compose ps
+```
+
+If you prefer to use a locally installed MongoDB instead of the included container, set `MONGO_URL` in `backend/.env` to point to your local instance (for example `mongodb://localhost:27017/`) and remove or disable the `mongo` service in `docker-compose.yml`.
+
+To stop and remove containers:
+
+```bash
+docker-compose down
+```
 
 ## 📞 Support
 
 If you encounter any issues:
-1. Check service logs in `/var/log/supervisor/`
+1. Check service logs in `/var/log/supervisor/` or use `docker-compose logs`
 2. Verify all environment variables are set correctly
-3. Ensure MongoDB is running and accessible
+3. Ensure MongoDB is running and accessible (or use the docker-compose MongoDB)
 4. Check Firebase console for OAuth configuration
 
 ## 🔒 Security Notes
