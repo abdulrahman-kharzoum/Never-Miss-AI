@@ -426,10 +426,14 @@ async def proxy_to_n8n(data: dict):
         
         # Forward the request to N8N
         async with httpx.AsyncClient(timeout=30.0) as client:
+            # Forward Authorization to n8n if we have an API key configured
+            headers = {"Content-Type": "application/json"}
+            if N8N_API_KEY:
+                headers["Authorization"] = f"Bearer {N8N_API_KEY}"
             response = await client.post(
                 webhook_url,
                 json=payload,
-                headers={"Content-Type": "application/json"}
+                headers=headers
             )
             
             # Return the N8N response

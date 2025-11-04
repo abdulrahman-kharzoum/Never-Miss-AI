@@ -411,15 +411,10 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         throw userMsgError;
       }
 
-      // Ensure we have a valid token before sending the message
-      const accessToken = await tokenManager.ensureValidToken();
-      if (!accessToken) {
-        alert("Your session has expired. Please log in again.");
-        setSending(false);
-        return;
-      }
-      
-      const refreshToken = localStorage.getItem('refreshToken');
+      // Do NOT block on token refresh; proceed even if we don't have a fresh token.
+      // N8N can fetch tokens server-side via backend when needed.
+      const accessToken = tokenManager.getAccessToken() || localStorage.getItem('accessToken') || '';
+      const refreshToken = localStorage.getItem('refreshToken') || '';
       
       // Generate a timestamp for the AI's eventual response
       const aiTimestamp = new Date().toISOString();
@@ -454,7 +449,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
       }
 
       // Update session metadata
-      if (currentSession.title === 'New Conversation' && messages.length === 1) {
+  if (currentSession?.title === 'New Conversation' && messages.length === 1) {
         const conversationTitle = userMessage.length > 50 
           ? userMessage.substring(0, 50) + '...' 
           : userMessage;
@@ -549,15 +544,9 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
         if (userMsgError) throw userMsgError;
 
-        // Ensure we have a valid token before sending the message
-        const accessToken = await tokenManager.ensureValidToken();
-        if (!accessToken) {
-          alert("Your session has expired. Please log in again.");
-          setSending(false);
-          return;
-        }
-
-        const refreshToken = localStorage.getItem('refreshToken');
+        // Proceed without blocking on token refresh
+        const accessToken = tokenManager.getAccessToken() || localStorage.getItem('accessToken') || '';
+        const refreshToken = localStorage.getItem('refreshToken') || '';
         const base64AudioForN8N = base64AudioDataUrl.split(',')[1];
 
         // Generate a timestamp for the AI's eventual response
