@@ -34,6 +34,20 @@ const AboutTab = () => {
     }
   ];
 
+  // Add study / university features
+  features.push(
+    {
+      icon: '🎓',
+      title: 'University Guide',
+      description: 'Personalized study plans and university application guidance'
+    },
+    {
+      icon: '📚',
+      title: 'Study Guide & Quiz Creator',
+      description: 'Upload PDF/CSV/Excel to generate summaries, flashcards, and quizzes automatically'
+    }
+  );
+
   const skills = [
     'Front-end Development (Flutter, React)',
     '3D Interactive Experiences',
@@ -61,10 +75,10 @@ const AboutTab = () => {
         </div>
         <div className="relative max-w-5xl mx-auto text-center animate-fade-in">
           <h1 className="text-6xl font-bold text-white mb-6 tracking-tight">
-            Never Miss What Matters
+            nerver miss ai
           </h1>
           <p className="text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed">
-            The story of how one developer's frustration became an AI-powered productivity revolution
+            AI-powered study and productivity assistant — summaries, quizzes, calendar & email automation
           </p>
           <div className="mt-8 animate-bounce">
             <svg className="w-8 h-8 text-white/70 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -91,10 +105,10 @@ const AboutTab = () => {
         <div className="mb-20">
           <div className="text-center mb-12">
             <h2 className="text-5xl font-bold bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 bg-clip-text text-transparent mb-4">
-              NeverMiss AI: Your AI-Powered Productivity Assistant
+              nerver miss ai: Your AI-Powered Study & Productivity Assistant
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
-              An intelligent platform that transforms how you manage your digital life
+              An intelligent platform that transforms how you study and manage your digital life
             </p>
           </div>
 
@@ -161,8 +175,8 @@ const AboutTab = () => {
 
             {/* Right Side - Content */}
             <div className="flex flex-col justify-center">
-              <h2 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-3">
-                Meet Abdulrahman Kharzoum
+              <h2 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-8">
+                Built with Expertise
               </h2>
               <p className="text-xl text-purple-600 dark:text-purple-400 font-semibold mb-6">
                 Front-end Developer & AI Automation Specialist

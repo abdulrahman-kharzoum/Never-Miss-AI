@@ -1,9 +1,18 @@
+# nerver miss ai
 # NeverMiss AI - Your AI-Powered Productivity Assistant
 
+This repository contains the source code for "nerver miss ai" — an AI-powered productivity and study assistant that integrates Google OAuth, n8n automation, and file-based study helpers (PDF/CSV/Excel) to generate quizzes and summaries.
 **Never miss what matters most.** NeverMiss AI is an intelligent productivity platform that transforms how you manage your digital life through conversational AI. Get AI-powered assistance for planning your day, understanding university content, and creating study materials from your documents.
 
 ## 🎯 Key Features
 
+- AI-assisted Email, Calendar and Task management (read, reply, organize)  
+- Google OAuth sign-in with secure, encrypted token storage  
+- n8n-ready API endpoints to consume tokens in workflows  
+- Real-time notifications (Supabase-ready / Socket.IO proxy)  
+- Study & University features: upload PDF / CSV / Excel to generate summaries, create quizzes, and extract study guides  
+- File processing + AI callbacks (can be connected to n8n to orchestrate heavy-lifting)  
+- Voice interaction & meeting notes integration  
 ### 📅 **Plan Your Day**
 - AI-powered daily planning assistant
 - Smart task organization and prioritization
@@ -49,6 +58,11 @@
 ## 🏗️ Architecture
 
 ```
+Frontend (React) → Backend (FastAPI + Socket.IO) → MongoDB / Supabase
+        ↓
+      Google OAuth
+        ↓
+     n8n Workflows (webhooks / proxy)
 Frontend (React + Firebase Auth) → Backend (FastAPI) → Supabase
                 ↓
           Google OAuth
@@ -85,15 +99,23 @@ nevermiss-ai/
 └── README.md             # This file
 ```
 
-## 🚀 Getting Started
+## 🚀 Getting Started (Run locally)
+
+This project contains two main parts: the frontend (React) and the backend (FastAPI). The backend exposes endpoints for storing/retrieving encrypted Google OAuth tokens and can proxy/trigger n8n webhooks.
 
 ### Prerequisites
+- Node.js (>=14) and npm or yarn
+- Python 3.9+ and pip
+- MongoDB (local or remote)
+- A Firebase project (optional — used by the frontend for Google sign-in)
 - **Node.js** (v16 or higher)
 - **Python** (v3.8 or higher)
 - **Firebase Account** (for authentication)
 - **Supabase Account** (for database)
 - **N8N Instance** (for AI workflows)
 
+### Run the backend (Windows PowerShell)
+1. Open a PowerShell terminal in the `backend` folder:
 ### Installation
 
 #### 1. Clone the Repository
@@ -102,6 +124,11 @@ git clone https://github.com/abdulrahman-kharzoum/nevermiss-ai.git
 cd nevermiss-ai
 ```
 
+```powershell
+cd .\backend
+python -m pip install -r requirements.txt
+# Create a .env file or copy .env.example and set required vars (MONGO_URL, ENCRYPTION_KEY, N8N_API_KEY, etc.)
+python .\server.py
 #### 2. Backend Setup
 ```bash
 cd backend
@@ -115,6 +142,15 @@ cp .env.example .env
 python server.py
 ```
 
+The backend by default listens on port 8001 (see `backend/server.py`).
+
+### Run the frontend (Windows PowerShell)
+1. Open a PowerShell terminal in the `frontend` folder:
+
+```powershell
+cd .\frontend
+npm install
+npm start
 The backend will start on `http://localhost:8001`
 
 #### 3. Frontend Setup
@@ -129,6 +165,12 @@ cp .env.example .env
 # Run the frontend development server
 npm start
 ```
+
+The frontend development server runs on port 3000 by default.
+
+Notes:
+- For production deployments, use a production-ready server (uvicorn/gunicorn) and build the frontend with `npm run build`.
+- Make sure to set correct environment variables for Firebase, Google OAuth client ID/secret, and MongoDB.
 
 The frontend will start on `http://localhost:3000`
 
@@ -158,58 +200,45 @@ REACT_APP_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 ## 🔧 Configuration
 
-### Backend Configuration (`/app/backend/.env`)
-```env
+### Backend Environment (create `backend/.env`)
+Example values to set (copy `.env.example` or create `.env`):
+
+```
 MONGO_URL=mongodb://localhost:27017/
 DATABASE_NAME=google_auth_db
-API_SECRET_KEY=your-secret-key-change-this-in-production
-N8N_API_KEY=n8n-secure-api-key-change-this
 ENCRYPTION_KEY=your-encryption-key-32-chars-long
+N8N_API_KEY=n8n-secure-api-key-change-this
+N8N_WEBHOOK_URL=https://your-n8n.example/webhook/...
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+REDIRECT_URI=http://localhost:3000/auth/callback
 ```
 
-**⚠️ IMPORTANT:** Change these values in production!
+### Frontend Environment (`frontend/.env`)
+Provide Firebase / Google OAuth values as needed (keys should match your Firebase project). Do not commit secrets to the repo.
 
-### Frontend Configuration (`/app/frontend/.env`)
-Already configured with your Firebase credentials:
-- Firebase API Key: `AIzaSyBjNcwo_56CaFNds5QVAqerk-JDUUEuGIo`
-- Project ID: `product-image-maker`
+## 📡 API Endpoints (selected)
 
-## 📡 API Endpoints
+1) Store user token
 
-### 1. Store User Token
-```http
 POST /api/auth/store-token
-Content-Type: application/json
 
-{
-  "userId": "user-uid",
-  "email": "user@example.com",
-  "displayName": "User Name",
-  "photoURL": "https://...",
-  "accessToken": "token",
-  "refreshToken": "refresh-token",
-  "expiresAt": "2024-01-01T00:00:00Z",
-  "scopes": ["gmail", "calendar", "drive"]
-}
-```
+Payload: JSON with userId, email, displayName, accessToken, refreshToken (optional), expiresAt, scopes
 
-### 2. Get User Token (for n8n)
-```http
+2) Get user token (used by n8n)
+
 GET /api/auth/get-token/{user_id}
-Authorization: Bearer n8n-secure-api-key-change-this
-```
+Authorization: Bearer <N8N_API_KEY>
 
-Response:
-```json
-{
-  "userId": "user-uid",
-  "email": "user@example.com",
-  "displayName": "User Name",
-  "accessToken": "decrypted-token",
-  "expiresAt": "2024-01-01T00:00:00Z",
-  "scopes": ["gmail", "calendar", "drive"]
-}
-```
+3) Validate token
+
+POST /api/auth/validate-token
+
+4) Refresh token (protected — to be called by n8n)
+
+POST /api/auth/refresh-token
+
+5) N8N webhook proxy and callback endpoints are available (`/api/n8n/proxy`, `/api/n8n/webhook/callback`)
 
 ### 3. Validate Token
 ```http
@@ -242,12 +271,11 @@ The application requests the following Google API scopes:
 
 ## 🎨 Frontend Features
 
-1. **Sign In with Google** - Click the button to authenticate
-2. **User Profile Display** - Shows name, email, and photo
-3. **Token Management** - View and copy access token
-4. **n8n Integration Info** - Shows the API endpoint for workflows
-5. **Granted Permissions** - Displays all granted scopes
-6. **Sign Out** - Clear session and tokens
+1. Sign in with Google and connect to n8n workflows
+2. View and manage encrypted tokens (admin endpoints for n8n)
+3. Upload files (PDF/CSV/Excel) to generate study summaries and quizzes (via n8n or backend processing)
+4. Real-time notifications and AI callbacks
+5. Voice-enabled interactions and meeting notes
 
 ## 🔗 n8n Integration
 
@@ -306,27 +334,21 @@ curl http://localhost:8001/api/auth/get-token/test-user \
 4. Verify token is displayed
 5. Check backend for stored token
 
-## 📝 Next Steps
+## 📝 Next Steps / Production Checklist
 
-### For Production Deployment:
-1. ✅ Change all API keys in `.env` files
-2. ✅ Update `ENCRYPTION_KEY` to a secure 32-character string
-3. ✅ Update `N8N_API_KEY` to a strong random key
-4. ✅ Configure CORS to only allow your domain
-5. ✅ Use HTTPS for all connections
-6. ✅ Set up proper MongoDB authentication
-7. ✅ Enable Firebase App Check for security
-8. ✅ Implement token refresh logic
-9. ✅ Add rate limiting to API endpoints
-10. ✅ Set up monitoring and logging
+- Replace development keys and secrets with secure values
+- Use HTTPS and restrict CORS to your domains
+- Use managed MongoDB or a secured production instance
+- Consider moving file processing to a dedicated worker or n8n flow
+- Add rate limiting, monitoring and backups
 
-### For Enhanced Features:
-- [ ] Add token refresh mechanism
-- [ ] Implement Microsoft/GitHub OAuth
-- [ ] Add user management dashboard
-- [ ] Create token expiry notifications
-- [ ] Add audit logging
-- [ ] Implement webhook for token updates
+If you'd like, I can also:
+- rename the GitHub repository metadata files and update package.json titles to reflect the new project name (`nerver miss ai`)
+- add a short CONTRIBUTING.md or quick-start scripts to streamline local setup
+
+---
+
+Built with ❤️ — updated project name to "nerver miss ai" and included study features (quizzes/summaries from PDF/CSV/Excel).
 
 ## 🐛 Troubleshooting
 
