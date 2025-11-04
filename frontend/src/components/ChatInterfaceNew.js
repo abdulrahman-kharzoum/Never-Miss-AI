@@ -203,6 +203,27 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
     }
   }, [user, loadSessions]);
 
+  // Auto-open Study Guide session when returning from file upload
+  useEffect(() => {
+    if (user && sessions.length > 0) {
+      const autoOpen = localStorage.getItem('autoOpenStudyGuide');
+      const studySessionId = localStorage.getItem('studyGuideSessionId');
+      if (autoOpen === 'true' && studySessionId) {
+        const session = sessions.find(s => s.session_id === studySessionId);
+        if (session) {
+          setActiveTab('study_guide');
+          setCurrentSession(session);
+          console.log('Auto-opened Study Guide session:', studySessionId);
+          // Clean up flags
+          try {
+            localStorage.removeItem('autoOpenStudyGuide');
+            localStorage.removeItem('studyGuideSessionId');
+          } catch (e) { /* ignore */ }
+        }
+      }
+    }
+  }, [user, sessions]);
+
   // Note: Webhook handling is done inside loadSessions() to avoid duplicate session creation
 
   // Effect for loading messages when the session changes
@@ -656,6 +677,154 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
   // Study Guide Tab
   if (activeTab === 'study_guide') {
+    // If a Study Guide Chat session is selected, show the chat interface
+    if (currentSession?.title === 'Study Guide Chat') {
+      return (
+        <div className="chat-interface-container">
+          {renderSidebar()}
+
+          {/* Main Chat Area */}
+          <div className="main-chat-area">
+            {/* Header */}
+            <div className="chat-header">
+              <div className="chat-header-left">
+                <button
+                  className="hamburger-button"
+                  onClick={() => setShowSidebar(!showSidebar)}
+                >
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+                <div>
+                  <div className="chat-header-title">
+                    {currentSession?.title || 'Study Guide Chat'}
+                  </div>
+                  <div className="chat-header-subtitle">RAG-powered study assistant</div>
+                </div>
+              </div>
+              <div className="chat-header-right">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="status-indicator"></div>
+                  <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Online</span>
+                </div>
+                <div style={{ marginLeft: '12px' }}>
+                  <NotificationBell />
+                </div>
+                {currentSession && (
+                  <button onClick={handleDeleteSession} className="delete-button" title="Delete conversation">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Messages Area */}
+            <div className="chat-messages-container">
+              {loading ? (
+                <div className="loading-container">
+                  <div style={{ textAlign: 'center' }}>
+                    <div className="spinner" style={{ margin: '0 auto 16px' }}></div>
+                    <div style={{ color: 'var(--text-secondary)' }}>Loading messages...</div>
+                  </div>
+                </div>
+              ) : messages.length === 0 ? (
+                <div className="empty-state-container">
+                  <div className="empty-state">
+                    <div className="empty-state-icon">
+                      <svg style={{ width: '40px', height: '40px', color: 'white' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C6.5 6.253 2 10.998 2 17s4.5 10.747 10 10.747c5.5 0 10-4.998 10-10.747S17.5 6.253 12 6.253z" />
+                      </svg>
+                    </div>
+                    <div className="empty-state-title">Start learning</div>
+                    <div className="empty-state-description">
+                      Ask questions about your uploaded study materials
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {messages.map((message, index) => {
+                    const isLastAIMessage = message.sender === 'ai' && index === messages.length - 1;
+                    return (
+                      <div
+                        key={message.id || index}
+                        className={`message-wrapper ${message.sender}`}
+                      >
+                        <div className={`${message.sender}-message ${isLastAIMessage ? 'last-ai-message' : ''}`}>
+                          {message.sender === 'ai' ? (
+                            <div className="message-text">
+                              <MarkdownRenderer content={message.content} />
+                            </div>
+                          ) : (
+                            <div className="message-text">{message.content}</div>
+                          )}
+                          <div className="timestamp">
+                            {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {sending && (
+                    <div className="message-wrapper ai">
+                      <div className="typing-indicator">
+                        <div className="typing-dot"></div>
+                        <div className="typing-dot"></div>
+                        <div className="typing-dot"></div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input Area */}
+            <div className={`input-area ${isExpanded ? 'expanded' : ''}`}>
+              <div className="input-container-wrapper">
+                <div className="message-input-container">
+                  <div className="message-input-inner">
+                    <textarea
+                      ref={textareaRef}
+                      value={inputMessage}
+                      onChange={(e) => setInputMessage(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="Ask about your study materials... (Enter to send)"
+                      disabled={sending}
+                      className="message-input"
+                      rows="1"
+                    />
+                    <button
+                      onClick={() => setIsExpanded(!isExpanded)}
+                      className="expand-button"
+                    >
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isExpanded ? "M4 8h4V4m-4 4l-4-4m16 0h-4v4m4-4l4-4M4 16h4v4m-4-4l-4 4m16 0h-4v-4m4 4l4 4" : "M4 8V4h4m0 0l-4-4m16 0v4h-4m0 0l4-4M4 16v4h4m0 0l-4 4m16 0v-4h-4m0 0l4 4"} />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={sendMessage}
+                      disabled={!inputMessage.trim() || sending}
+                      className="send-button"
+                    >
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                    </button>
+                    <VoiceRecorder onRecordingComplete={handleVoiceRecording} disabled={sending} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // Otherwise show the file upload interface
     return (
       <div className="chat-interface-container">
         {renderSidebar()}
@@ -783,7 +952,18 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
             .map((session) => (
               <div
                 key={session.id}
-                onClick={() => { setCurrentSession(session); setShowSidebar(false); }}
+                onClick={() => {
+                  // Auto-switch tab based on session title
+                  if (session.title === 'Study Guide Chat') {
+                    setActiveTab('study_guide');
+                  } else if (session.title === 'University Guide') {
+                    setActiveTab('university_guide');
+                  } else {
+                    setActiveTab('chat');
+                  }
+                  setCurrentSession(session);
+                  setShowSidebar(false);
+                }}
                 className={`conversation-item ${currentSession?.id === session.id ? 'active' : ''}`}
               >
                 <div className="conversation-title">{session.title}</div>
@@ -847,55 +1027,54 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
             </div>
           </div>
           <div className="chat-header-right">
-            {/* New Chat Button */}
-            <button
-              onClick={async () => {
-                // Create new session based on current active tab
-                let webhookUrl = N8N_WEBHOOK_URL;
-                let source = 'chat';
-                
-                if (activeTab === 'university_guide') {
-                  webhookUrl = UNIVERSITY_GUIDE_WEBHOOK;
-                  source = 'university_guide';
-                } else if (activeTab === 'study_guide') {
-                  webhookUrl = STUDY_GUIDE_WEBHOOK;
-                  source = 'study_guide';
-                } else if (activeTab === 'chat') {
-                  webhookUrl = PLAN_WEBHOOK || N8N_WEBHOOK_URL;
-                  source = 'chat';
-                }
-                
-                await createSessionWithWebhook(webhookUrl, source);
-              }}
-              className="new-chat-header-button"
-              style={{
-                padding: '8px 16px',
-                backgroundColor: theme === 'light' ? '#000' : 'var(--primary-color)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.2s ease',
-                marginRight: '12px'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.backgroundColor = theme === 'light' ? '#111' : 'var(--primary-hover)';
-                e.target.style.transform = 'scale(1.05)';
-              }}
-              onMouseLeave={(e) => {
+            {/* New Chat Button - NOT available for Study Guide (only via file upload) */}
+            {activeTab !== 'study_guide' && (
+              <button
+                onClick={async () => {
+                  // Create new session based on current active tab
+                  let webhookUrl = N8N_WEBHOOK_URL;
+                  let source = 'chat';
+                  
+                  if (activeTab === 'university_guide') {
+                    webhookUrl = UNIVERSITY_GUIDE_WEBHOOK;
+                    source = 'university_guide';
+                  } else if (activeTab === 'chat') {
+                    webhookUrl = PLAN_WEBHOOK || N8N_WEBHOOK_URL;
+                    source = 'chat';
+                  }
+                  
+                  await createSessionWithWebhook(webhookUrl, source);
+                }}
+                className="new-chat-header-button"
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: theme === 'light' ? '#000' : 'var(--primary-color)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.2s ease',
+                  marginRight: '12px'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = theme === 'light' ? '#111' : 'var(--primary-hover)';
+                  e.target.style.transform = 'scale(1.05)';
+                }}
+                onMouseLeave={(e) => {
                 e.target.style.backgroundColor = theme === 'light' ? '#000' : 'var(--primary-color)';
                 e.target.style.transform = 'scale(1)';
               }}
               title="Start a new conversation"
-            >
-              <span style={{ fontSize: '16px' }}>➕</span>
-              New Chat
-            </button>
+              >
+                <span style={{ fontSize: '16px' }}>➕</span>
+                New Chat
+              </button>
+            )}
             
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div className="status-indicator"></div>
