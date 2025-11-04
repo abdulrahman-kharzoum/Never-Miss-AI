@@ -26,6 +26,9 @@ export const storeUserToken = async (tokenData) => {
 
 export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refreshToken, userName = '', userEmail = '', userId = '', aiTimestamp = '', webhookUrl = N8N_WEBHOOK_URL) => {
   try {
+    // This console.log was restored to fix a syntax error.
+    // It appears a debugging line was left incomplete.
+    console.log('Sending message to N8N:', {
       webhookUrl,
       sessionId,
       messagePreview: chatInput.substring(0, 50)
@@ -62,13 +65,6 @@ export const sendMessageToN8N = async (sessionId, chatInput, accessToken, refres
     );
     return response.data;
   } catch (error) {
-    console.error('Error sending message to N8N:', {
-      message: error.message,
-      code: error.code,
-      webhookUrl,
-      response: error.response?.data
-    });
-    
     // Provide user-friendly error message
     if (error.code === 'ECONNABORTED') {
       throw new Error('Request timeout - N8N service is taking too long to respond');
