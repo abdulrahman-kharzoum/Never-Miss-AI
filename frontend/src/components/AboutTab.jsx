@@ -205,6 +205,73 @@ const AboutTab = () => {
           </div>
         </div>
 
+        {/* Co-Founder / Team Section - Aman */}
+        <div className="bg-gradient-to-br from-white to-blue-50 dark:from-gray-800 dark:to-blue-900/20 rounded-3xl shadow-2xl overflow-hidden mb-20">
+          <div className="grid md:grid-cols-2 gap-12 p-12">
+            {/* Left Side - Content */}
+            <div className="flex flex-col justify-center order-2 md:order-1">
+              <h2 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-3">
+                Meet Aman Kharzoum
+              </h2>
+              <p className="text-xl text-blue-600 dark:text-blue-400 font-semibold mb-6">
+                         Senior Software Engineer
+                Mobile & Web Application Developer | AI Automation , Flutter, React Specialist
+              </p>
+
+              <div className="space-y-4 text-gray-700 dark:text-gray-300 leading-relaxed">
+                <p>
+                  Partnering on the NeverMiss AI vision, Aman focuses on crafting clear, delightful user
+                  experiences and helping shape product flows that feel effortless.
+                </p>
+                <p>
+                  From polishing interfaces to validating ideas quickly, Aman bridges design and engineering so
+                  features land with clarity and speed.
+                </p>
+                <p className="font-semibold text-blue-600 dark:text-blue-400">
+                  Together, we’re building tools that save time and turn complex workflows into simple
+                  conversations.
+                </p>
+              </div>
+            </div>
+
+            {/* Right Side - Image / Monogram */}
+            <div className="flex flex-col items-center justify-center order-1 md:order-2">
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-full blur-2xl opacity-50 animate-pulse"></div>
+                <div className="relative w-64 h-64 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-full flex items-center justify-center text-white text-6xl font-bold shadow-2xl">
+                  AM
+                </div>
+              </div>
+              <div className="mt-8 flex gap-4">
+                <a
+                  href="https://amankharzoum.vercel.app/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
+                >
+                  🌐 Portfolio
+                </a>
+                <a
+                  href="https://www.linkedin.com/in/aman-kharzoum-36b3a7328/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-700 text-white rounded-full font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
+                >
+                  💼 LinkedIn
+                </a>
+                <a
+                  href="https://github.com/Sereen-Kh"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-6 py-3 bg-gray-800 hover:bg-gray-900 text-white rounded-full font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
+                >
+                  💻 GitHub
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Technical Expertise */}
         <div className="mb-20">
           <h2 className="text-4xl font-bold text-center bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-8">
