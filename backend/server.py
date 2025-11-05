@@ -464,6 +464,28 @@ async def connect(sid, environ):
 async def disconnect(sid):
     print(f"Client disconnected: {sid}")
 
+@app.post("/api/file-processing-status")
+async def file_processing_status(status: FileProcessingStatus, authorized: bool = Depends(verify_n8n_api_key)):
+    """
+    Receives file processing status from n8n and emits it to the specific user via Socket.IO.
+    """
+    try:
+        # Emit the status update to a room named after the userId
+        await sio.emit('file_status_update', status.dict(), room=status.userId)
+        return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@sio.on('join')
+async def join(sid, data):
+    """
+    Allows a client to join a room based on their userId.
+    """
+    userId = data.get('userId')
+    if userId:
+        sio.enter_room(sid, userId)
+        print(f"Client {sid} joined room {userId}")
+
 """
 Deprecated: /api/file-processing-status
 

@@ -42,17 +42,18 @@ const Notification = ({ id, message, type, duration, onClick, data, removeNotifi
         };
 
         const webhook = determineWebhook();
+        // For notifications with sessionId, always use study_guide tab since Study Guide is the static chat interface
+        const tab = 'study_guide';
+
         try { localStorage.setItem('chatWebhookUrl', webhook); } catch (e) { /* ignore */ }
         try {
-          const newWin = window.open(`/chat?webhook=${encodeURIComponent(webhook)}`, '_blank');
-          // Popup blocked if newWin is null
-          if (!newWin) {
-            // Fallback: navigate in same tab
-            window.location.href = `/chat?webhook=${encodeURIComponent(webhook)}`;
-          }
+          const url = `/chat?webhook=${encodeURIComponent(webhook)}&sessionId=${encodeURIComponent(data.sessionId || '')}&tab=${tab}`;
+          // For notifications, navigate in same tab instead of opening new window
+          window.location.href = url;
         } catch (e) {
           // As a final fallback, navigate same tab
-          window.location.href = `/chat?webhook=${encodeURIComponent(webhook)}`;
+          const url = `/chat?webhook=${encodeURIComponent(webhook)}&sessionId=${encodeURIComponent(data.sessionId || '')}&tab=${tab}`;
+          window.location.href = url;
         }
         removeNotification(id);
         return;

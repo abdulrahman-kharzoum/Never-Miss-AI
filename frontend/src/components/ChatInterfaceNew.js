@@ -15,15 +15,23 @@ import '../ChatInterfaceNew.css';
 import { useTheme } from '../context/ThemeContext';
 
 const ChatInterfaceNew = ({ user, onSignOut }) => {
-  // Initialize activeTab from URL hash if present
+  // Initialize activeTab from URL hash or query parameters if present
   const getInitialTab = () => {
     const hash = window.location.hash.replace('#', '');
     if (['chat', 'university_guide', 'study_guide', 'dashboard', 'settings', 'pricing', 'about'].includes(hash)) {
       return hash;
     }
+
+    // Check URL query parameters for tab
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (['chat', 'university_guide', 'study_guide', 'dashboard', 'settings', 'pricing', 'about'].includes(tabParam)) {
+      return tabParam;
+    }
+
     return 'chat';
   };
-  
+
   const [activeTab, setActiveTab] = useState(getInitialTab);
   const [sessions, setSessions] = useState([]);
   const [currentSession, setCurrentSession] = useState(null);
@@ -66,6 +74,16 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         console.error('No user ID available for session creation');
         return null;
       }
+
+      // Check if we're already creating a session to prevent duplicates
+      const isCreatingSession = localStorage.getItem('isCreatingSession');
+      if (isCreatingSession) {
+        console.log('Session creation already in progress, skipping duplicate creation');
+        return null;
+      }
+      
+      // Mark that we're creating a session
+      localStorage.setItem('isCreatingSession', 'true');
 
       const sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -117,6 +135,9 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         console.error('Failed to persist session->webhook mapping', e);
       }
 
+      // Clean up the session creation flag
+      localStorage.removeItem('isCreatingSession');
+
       // Do not attempt to write webhook_url/metadata to the DB because the table
       // schema may not include those columns. We persist the mapping in localStorage
       // and only update session fields that definitely exist (title/updated_at/message_count).
@@ -124,6 +145,8 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
       return createdSession;
     } catch (error) {
       console.error('Error creating session with webhook:', error);
+      // Clean up the session creation flag even if there's an error
+      localStorage.removeItem('isCreatingSession');
       return null;
     }
   }, [user]);
@@ -170,16 +193,33 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
             
             if (existingSession) {
               setSessions(data || []);
+              // If we found an existing session, set it as current
+              setCurrentSession(existingSession);
             } else {
-              await createSessionWithWebhook(webhookToUse, source);
-              // Reload sessions after creating new one
-              const { data: updatedData } = await supabase
-                .from('chat_sessions')
-                .select('*')
-                .eq('user_id', user.uid)
-                .order('updated_at', { ascending: false});
-              setSessions(updatedData || []);
-              sessionsUpdated = true;
+              // Check if we're in the middle of creating a session to prevent duplicates
+              const isCreatingSession = localStorage.getItem('isCreatingStudyGuideSession');
+              if (isCreatingSession) {
+                setSessions(data || []);
+                return;
+              }
+              
+              // Mark that we're creating a session
+              localStorage.setItem('isCreatingStudyGuideSession', 'true');
+              
+              try {
+                await createSessionWithWebhook(webhookToUse, source);
+                // Reload sessions after creating new one
+                const { data: updatedData } = await supabase
+                  .from('chat_sessions')
+                  .select('*')
+                  .eq('user_id', user.uid)
+                  .order('updated_at', { ascending: false});
+                setSessions(updatedData || []);
+                sessionsUpdated = true;
+              } finally {
+                // Clean up the flag
+                localStorage.removeItem('isCreatingStudyGuideSession');
+              }
             }
           }
           
@@ -220,9 +260,36 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
     }
   }, [user, loadSessions]);
 
-  // Auto-open Study Guide session when returning from file upload
+  // Auto-open session from URL parameters or localStorage
   useEffect(() => {
     if (user && sessions.length > 0) {
+      // Check URL parameters first
+      const params = new URLSearchParams(window.location.search);
+      const sessionIdParam = params.get('sessionId');
+
+      if (sessionIdParam) {
+        const session = sessions.find(s => s.session_id === sessionIdParam);
+        if (session) {
+          // Determine tab based on session title
+          if (session.title === 'Study Guide Chat' || session.title?.startsWith('Study Guide:')) {
+            setActiveTab('study_guide');
+          } else if (session.title === 'University Guide') {
+            setActiveTab('university_guide');
+          } else {
+            setActiveTab('chat');
+          }
+          setCurrentSession(session);
+          // Clean up URL parameters
+          params.delete('sessionId');
+          params.delete('tab');
+          params.delete('webhook');
+          const newUrl = window.location.pathname + (params.toString() ? `?${params.toString()}` : '');
+          window.history.replaceState({}, '', newUrl);
+          return;
+        }
+      }
+
+      // Fallback to localStorage for auto-open Study Guide
       const autoOpen = localStorage.getItem('autoOpenStudyGuide');
       const studySessionId = localStorage.getItem('studyGuideSessionId');
       if (autoOpen === 'true' && studySessionId) {
@@ -755,8 +822,36 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
 
   // Study Guide Tab
   if (activeTab === 'study_guide') {
-    // If a Study Guide Chat session is selected, show the chat interface
-    if (currentSession?.title === 'Study Guide Chat') {
+    // Check if we came from a notification click (has sessionId in URL)
+    const params = new URLSearchParams(window.location.search);
+    const hasSessionIdFromNotification = params.get('sessionId') && params.get('tab') === 'study_guide';
+
+    // If a Study Guide Chat session is selected OR we came from a notification, show the chat interface
+    if (currentSession?.title === 'Study Guide Chat' || hasSessionIdFromNotification) {
+      // Get dynamic title from session or first file name
+      const getDynamicTitle = () => {
+        if (currentSession?.title && currentSession.title !== 'Study Guide Chat') {
+          return currentSession.title;
+        }
+        // Try to get title from localStorage (set during file upload)
+        const storedTitle = localStorage.getItem('studyGuideChatTitle');
+        if (storedTitle) {
+          return storedTitle;
+        }
+        return 'Study Guide Chat';
+      };
+
+      // Force show chat interface when coming from notification
+      const params = new URLSearchParams(window.location.search);
+      const hasSessionIdFromNotification = params.get('sessionId') && params.get('tab') === 'study_guide';
+      if (hasSessionIdFromNotification && !currentSession) {
+        // Find the session from URL
+        const sessionIdParam = params.get('sessionId');
+        const session = sessions.find(s => s.session_id === sessionIdParam);
+        if (session) {
+          setCurrentSession(session);
+        }
+      }
       return (
         <div className="chat-interface-container">
           {renderSidebar()}
@@ -776,7 +871,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
                 </button>
                 <div>
                   <div className="chat-header-title">
-                    {currentSession?.title || 'Study Guide Chat'}
+                    {getDynamicTitle()}
                   </div>
                   <div className="chat-header-subtitle">RAG-powered study assistant</div>
                 </div>
@@ -901,7 +996,7 @@ const ChatInterfaceNew = ({ user, onSignOut }) => {
         </div>
       );
     }
-    
+
     // Otherwise show the file upload interface
     return (
       <div className="chat-interface-container">

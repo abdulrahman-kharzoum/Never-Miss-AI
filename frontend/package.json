@@ -2,7 +2,7 @@
   "name": "nerver-miss-ai",
   "version": "0.1.0",
   "private": true,
-  "proxy": "http://localhost:8001",
+  "proxy": "http://localhost:8011",
   "dependencies": {
     "@supabase/supabase-js": "^2.74.0",
     "axios": "^1.6.2",

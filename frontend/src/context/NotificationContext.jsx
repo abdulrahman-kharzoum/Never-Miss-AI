@@ -4,7 +4,7 @@ import { supabase } from '../utils/supabaseClient';
 
 const NotificationContext = createContext();
 
-export const NotificationProvider = ({ children }) => {
+export const NotificationProvider = ({ children, user }) => {
   // active notifications are the transient ones that show on screen
   const [activeNotifications, setActiveNotifications] = useState([]);
   // history keeps all notifications received during this session for the bell panel
@@ -47,11 +47,12 @@ export const NotificationProvider = ({ children }) => {
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
           const newRow = payload.new;
 
-          // If the notification is targeted at a specific user, ignore others
-          const currentUserId = (() => {
+          // Get current user ID from user prop or fallback to localStorage
+          const currentUserId = user?.uid || (() => {
             try { return localStorage.getItem('userId'); } catch (e) { return null; }
           })();
 
+          // If the notification is targeted at a specific user, ignore others
           if (newRow.user_id && currentUserId && newRow.user_id !== currentUserId) return;
 
           const id = newRow.id || uuidv4();
@@ -60,7 +61,11 @@ export const NotificationProvider = ({ children }) => {
             message: newRow.message,
             type: newRow.status || 'info',
             duration: 10000,
-            onClick: null,
+            onClick: () => {
+              if (newRow.data?.redirectUrl) {
+                window.open(newRow.data.redirectUrl, '_blank');
+              }
+            },
             data: newRow.data || {},
             timestamp: newRow.created_at || new Date().toISOString(),
           };
@@ -81,7 +86,7 @@ export const NotificationProvider = ({ children }) => {
         // ignore
       }
     };
-  }, []);
+  }, [user?.uid]);
 
   const removeNotification = useCallback((id) => {
     setActiveNotifications((prev) => prev.filter((notif) => notif.id !== id));

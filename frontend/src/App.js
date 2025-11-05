@@ -137,7 +137,7 @@ function App() {
 
   return (
     <ThemeProvider>
-      <NotificationProvider>
+      <NotificationProvider user={user}>
         <NotificationContainer />
         {loading ? (
           <div className="min-h-screen flex items-center justify-center animate-gradient" style={{background: 'linear-gradient(135deg, #3a2766 0%, #6f5c99 50%, #00d4ff 100%)'}}>
